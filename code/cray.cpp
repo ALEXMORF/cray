@@ -3,7 +3,7 @@
 
 /*TODO(chen):
 
-. Record FPS
+. Record Performance
 . Handle window resize
 . Improve camera
 . Import mesh

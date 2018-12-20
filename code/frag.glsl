@@ -84,15 +84,15 @@ vec3 MatLookup(in int MatID)
     }
     else if (MatID == 1)
     {
-        return vec3(0.8, 0.0, 0);
+        return vec3(0.8, 0.1, 0.1);
     }
     else if (MatID == 2)
     {
-        return vec3(0.0, 0.8, 0);
+        return vec3(0.1, 0.8, 0.1);
     }
     else if (MatID == 3)
     {
-        return vec3(0.0, 0.0, 0.8);
+        return vec3(0.1, 0.1, 0.8);
     }
     else
     {
@@ -178,7 +178,7 @@ void main()
     {
         vec3 Radiance = vec3(0);
         vec3 Attenuation = vec3(1);
-        vec3 EnvLight = vec3(0.7);
+        vec3 EnvLight = vec3(1.0);
         
         vec3 CurrRo = Ro;
         vec3 CurrRd = Rd;

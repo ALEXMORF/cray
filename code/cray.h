@@ -1,5 +1,7 @@
 #pragma once
 
+#include "cray_memory.h"
+
 struct app_memory
 {
     void *Data;
@@ -10,6 +12,9 @@ struct app_memory
 
 struct cray
 {
+    GLuint Shader;
+    GLuint QuadVAO;
     
+    memory_arena MainArena;
 };
 

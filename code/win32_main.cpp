@@ -9,6 +9,8 @@
 #include "win32_kernel.h"
 
 global_variable b32 GlobalAppIsRunning;
+global_variable int GlobalWindowWidth;
+global_variable int GlobalWindowHeight;
 
 LRESULT CALLBACK
 Win32WindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
@@ -21,6 +23,12 @@ Win32WindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
         case WM_CLOSE:
         {
             GlobalAppIsRunning = false;
+        } break;
+        
+        case WM_SIZE:
+        {
+            GlobalWindowWidth = LOWORD(LParam);
+            GlobalWindowHeight = HIWORD(LParam);
         } break;
         
         default:
@@ -40,7 +48,10 @@ WinMain(HINSTANCE CurrentInstance,
 {
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     
-    HWND Window = Win32CreateWindow(CurrentInstance, 1280, 720, 
+    GlobalWindowWidth = 1280;
+    GlobalWindowHeight = 720;
+    HWND Window = Win32CreateWindow(CurrentInstance, 
+                                    GlobalWindowWidth, GlobalWindowHeight, 
                                     "CRay", "CRay WndClass", 
                                     Win32WindowCallback);
     HDC WindowDC = GetDC(Window);
@@ -53,6 +64,7 @@ WinMain(HINSTANCE CurrentInstance,
     AppMemory.Size = MB(4);
     AppMemory.Data = Win32AllocateMemory(AppMemory.Size);
     
+    u64 LastCounter = Win32GetPerformanceCounter();
     GlobalAppIsRunning = true;
     while (GlobalAppIsRunning)
     {
@@ -76,6 +88,11 @@ WinMain(HINSTANCE CurrentInstance,
                     {
                         Input.Keys[KeyCode] = KeyIsDown;
                         
+                        if (KeyIsDown && AltIsDown && KeyCode == VK_RETURN)
+                        {
+                            Win32ToggleFullscreen(Window);
+                        }
+                        
                         if (AltIsDown && KeyCode == VK_F4)
                         {
                             GlobalAppIsRunning = false;
@@ -91,10 +108,18 @@ WinMain(HINSTANCE CurrentInstance,
             }
         }
         
-        RunCRay(&AppMemory, &Input);
+        f32 ElapsedTimeInMS = Win32GetTimeElapsedInMS(LastCounter, Win32GetPerformanceCounter());
+        f32 dT = ElapsedTimeInMS / 1000.0;
+        LastCounter = Win32GetPerformanceCounter();
+        RunCRay(&AppMemory, &Input, dT, GlobalWindowWidth, GlobalWindowHeight);
         
         SwapBuffers(WindowDC);
         Sleep(2);
+        
+        f32 EstimatedFPS = 1.0 / dT;
+        char TitleBuf[255];
+        snprintf(TitleBuf, sizeof(TitleBuf), "CRay - %.2f FPS", EstimatedFPS);
+        SetWindowTextA(Window, TitleBuf);
     }
     
     return 0;

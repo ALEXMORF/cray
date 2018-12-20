@@ -3,11 +3,12 @@
 
 /*TODO(chen):
 
-. Record Performance
-. Handle window resize
 . Improve camera
+. Environment Map
+. glass ball
 . Import mesh
 . Raytrace Susan's head
+. Progressive rendering
 
 */
 
@@ -56,7 +57,7 @@ CompileShader(char *FilePath, GLenum Type)
 }
 
 internal void
-RunCRay(app_memory *Memory, input *Input)
+RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height)
 {
     ASSERT(sizeof(cray) <= Memory->Size);
     cray *CRay = (cray *)Memory->Data;
@@ -120,6 +121,7 @@ RunCRay(app_memory *Memory, input *Input)
         Memory->IsInitialized = true;
     }
     Clear(&GlobalTempArena);
+    CRay->T += dT;
     
     v3 dP = {};
     if (Input->Keys['W'])
@@ -146,13 +148,18 @@ RunCRay(app_memory *Memory, input *Input)
     {
         dP.Y += 1.0;
     }
-    CRay->CamP += 0.01 * Normalize(dP);
+    float CamSpeed = 1.0f;
+    CRay->CamP += CamSpeed * dT * Normalize(dP);
     
     glDisable(GL_DEPTH_TEST);
+    glViewport(0, 0, Width, Height);
     glUseProgram(CRay->Shader);
     
     glUniform3f(glGetUniformLocation(CRay->Shader, "CamP"), 
                 CRay->CamP.X, CRay->CamP.Y, CRay->CamP.Z);
+    glUniform1f(glGetUniformLocation(CRay->Shader, "Time"), CRay->T);
+    f32 AspectRatio = (f32)Width / (f32)Height;
+    glUniform1f(glGetUniformLocation(CRay->Shader, "AspectRatio"), AspectRatio);
     
     glBindVertexArray(CRay->QuadVAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);

@@ -1,6 +1,8 @@
 #version 440 core
 
 uniform vec3 CamP;
+uniform float Time;
+uniform float AspectRatio;
 
 in vec3 FragP;
 out vec3 FragColor;
@@ -8,6 +10,12 @@ out vec3 FragColor;
 #define T_MIN 0.0001
 #define T_MAX 10e31
 #define Pi 3.1415926
+
+struct material
+{
+    vec3 Albedo;
+    float Specular;
+};
 
 struct sphere
 {
@@ -76,28 +84,28 @@ float RayIntersectPlane(in vec3 Ro, in vec3 Rd, in vec3 N, in float C)
     }
 }
 
-vec3 MatLookup(in int MatID)
+material MatLookup(in int MatID)
 {
     if (MatID == 0)
     {
-        return vec3(0.8);
+        return material(vec3(0.8), 0.0);
     }
     else if (MatID == 1)
     {
-        return vec3(0.8, 0.1, 0.1);
+        return material(vec3(0.8, 0.4, 0.4), 0.0);
     }
     else if (MatID == 2)
     {
-        return vec3(0.1, 0.8, 0.1);
+        return material(vec3(0.4, 0.8, 0.4), 0.0);
     }
     else if (MatID == 3)
     {
-        return vec3(0.1, 0.1, 0.8);
+        return material(vec3(0.4, 0.4, 0.8), 0.0);
     }
     else
     {
         //NOTE(chen): non-existent material. Returns a ugly color for debug
-        return vec3(1, 0, 1);
+        return material(vec3(1, 0, 1), 0.0);
     }
 }
 
@@ -157,25 +165,27 @@ vec3 RandomBounce(in vec3 N, float Seed1, float Seed2)
 
 void main()
 {
-    //TODO(chen): Hack, fix later with the interactive version
-    float AspectRatio = 1280.0f / 720.0f;
-    
     InitScene();
-    
-    vec2 UV = 2.0 * FragP.xy - 1.0;
-    
-    vec3 Ro = CamP;
-    vec3 At = vec3(0, 0.5, 0);
-    vec3 CamZ = normalize(At - Ro);
-    vec3 CamX = normalize(cross(vec3(0, 1, 0), CamZ));
-    vec3 CamY = cross(CamZ, CamX);
-    vec3 Rd = normalize(AspectRatio * CamX * UV.x + CamY * UV.y + 1.73 * CamZ);
     
     vec3 AvgRadiance = vec3(0);
     
-#define SAMPLE_COUNT 32
+    vec2 UV = 2.0 * FragP.xy - 1.0;
+    vec2 delta = vec2(dFdx(UV.x), dFdy(UV.y));
+    
+#define SAMPLE_COUNT 8
     for (int SampleIndex = 0; SampleIndex < SAMPLE_COUNT; ++SampleIndex)
     {
+        vec2 UV = 2.0 * FragP.xy - 1.0;
+        UV.x += delta.x * Hash(13.17*UV.x + 3.7*float(SampleIndex));
+        UV.y += delta.y * Hash(31.13*UV.y + 7.1*float(SampleIndex));
+        
+        vec3 Ro = CamP;
+        vec3 At = vec3(0, 0.5, 0);
+        vec3 CamZ = normalize(At - Ro);
+        vec3 CamX = normalize(cross(vec3(0, 1, 0), CamZ));
+        vec3 CamY = cross(CamZ, CamX);
+        vec3 Rd = normalize(AspectRatio * CamX * UV.x + CamY * UV.y + 1.73 * CamZ);
+        
         vec3 Radiance = vec3(0);
         vec3 Attenuation = vec3(1);
         vec3 EnvLight = vec3(1.0);
@@ -191,14 +201,16 @@ void main()
             
             if (T > T_MIN && T < T_MAX)
             {
-                vec3 Albedo = MatLookup(MatID);
-                Attenuation *= Albedo;
+                material Mat = MatLookup(MatID);
+                Attenuation *= Mat.Albedo;
                 
                 CurrRo = CurrRo + (T - 0.001) * CurrRd;
                 
-                float Seed1 = dot(CurrRo, vec3(73.4, 71.531, 58.731)) + 8.19*float(SampleIndex);
-                float Seed2 = dot(CurrRo, vec3(11.9, 17.131, 83.351)) + 3.71*float(SampleIndex);
-                CurrRd = RandomBounce(NextN, Seed1, Seed2);
+                float Seed1 = dot(CurrRo, vec3(73.4, 71.531, 58.731)) + 8.19*float(SampleIndex) + 7.3*Time;
+                float Seed2 = dot(CurrRo, vec3(11.9, 17.131, 83.351)) + 3.71*float(SampleIndex) + 17.1*Time;
+                
+                CurrRd = mix(RandomBounce(NextN, Seed1, Seed2), 
+                             reflect(CurrRd, NextN), Mat.Specular);
             }
             else
             {

@@ -18,6 +18,7 @@ struct input
 struct cray
 {
     v3 CamP;
+    float T;
     
     memory_arena MainArena;
     GLuint Shader;

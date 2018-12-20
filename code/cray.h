@@ -10,11 +10,17 @@ struct app_memory
     b32 IsInitialized;
 };
 
+struct input
+{
+    b32 Keys[256];
+};
+
 struct cray
 {
-    GLuint Shader;
-    GLuint QuadVAO;
+    v3 CamP;
     
     memory_arena MainArena;
+    GLuint Shader;
+    GLuint QuadVAO;
 };
 

@@ -3,9 +3,9 @@
 
 /*TODO(chen):
 
-. Raytrace basic primitives
-. Interactive Camera 
+. Record FPS
 . Handle window resize
+. Improve camera
 . Import mesh
 . Raytrace Susan's head
 
@@ -56,15 +56,15 @@ CompileShader(char *FilePath, GLenum Type)
 }
 
 internal void
-RunCRay(app_memory Memory)
+RunCRay(app_memory *Memory, input *Input)
 {
-    ASSERT(sizeof(cray) <= Memory.Size);
-    cray *CRay = (cray *)Memory.Data;
+    ASSERT(sizeof(cray) <= Memory->Size);
+    cray *CRay = (cray *)Memory->Data;
     
-    if (!Memory.IsInitialized)
+    if (!Memory->IsInitialized)
     {
-        u8 *RestOfMemory = (u8 *)Memory.Data + sizeof(cray);
-        int RestOfMemorySize = Memory.Size - sizeof(cray);
+        u8 *RestOfMemory = (u8 *)Memory->Data + sizeof(cray);
+        int RestOfMemorySize = Memory->Size - sizeof(cray);
         CRay->MainArena = InitMemoryArena(RestOfMemory, RestOfMemorySize);
         GlobalTempArena = PushMemoryArena(&CRay->MainArena, KB(32));
         
@@ -115,12 +115,45 @@ RunCRay(app_memory Memory)
             glBindVertexArray(0);
         }
         
-        Memory.IsInitialized = true;
+        CRay->CamP = {0.0f, 1.0f, -2.0f};
+        
+        Memory->IsInitialized = true;
     }
     Clear(&GlobalTempArena);
     
+    v3 dP = {};
+    if (Input->Keys['W'])
+    {
+        dP.Z += 1.0;
+    }
+    if (Input->Keys['S'])
+    {
+        dP.Z -= 1.0;
+    }
+    if (Input->Keys['A'])
+    {
+        dP.X -= 1.0;
+    }
+    if (Input->Keys['D'])
+    {
+        dP.X += 1.0;
+    }
+    if (Input->Keys['Z'])
+    {
+        dP.Y -= 1.0;
+    }
+    if (Input->Keys['X'])
+    {
+        dP.Y += 1.0;
+    }
+    CRay->CamP += 0.01 * Normalize(dP);
+    
     glDisable(GL_DEPTH_TEST);
     glUseProgram(CRay->Shader);
+    
+    glUniform3f(glGetUniformLocation(CRay->Shader, "CamP"), 
+                CRay->CamP.X, CRay->CamP.Y, CRay->CamP.Z);
+    
     glBindVertexArray(CRay->QuadVAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);
 }

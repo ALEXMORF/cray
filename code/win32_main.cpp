@@ -47,6 +47,8 @@ WinMain(HINSTANCE CurrentInstance,
     Win32InitializeOpengl(WindowDC, 4, 4);
     LoadGLFunctions(Win32GetOpenglFunction);
     
+    input Input = {};
+    
     app_memory AppMemory = {};
     AppMemory.Size = MB(4);
     AppMemory.Data = Win32AllocateMemory(AppMemory.Size);
@@ -57,11 +59,39 @@ WinMain(HINSTANCE CurrentInstance,
         MSG Message = {};
         while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
         {
-            TranslateMessage(&Message);
-            DispatchMessage(&Message);
+            switch (Message.message)
+            {
+                case WM_KEYDOWN:
+                case WM_KEYUP:
+                case WM_SYSKEYDOWN:
+                case WM_SYSKEYUP:
+                { 
+                    WPARAM KeyCode = Message.wParam;
+                    
+                    b32 KeyIsDown = (Message.lParam & (1 << 31)) == 0;
+                    b32 KeyWasDown = (Message.lParam & (1 << 30)) != 0;
+                    b32 AltIsDown = (Message.lParam & (1 << 29)) != 0;
+                    
+                    if (KeyWasDown != KeyIsDown)
+                    {
+                        Input.Keys[KeyCode] = KeyIsDown;
+                        
+                        if (AltIsDown && KeyCode == VK_F4)
+                        {
+                            GlobalAppIsRunning = false;
+                        }
+                    }
+                } break;
+                
+                default:
+                {
+                    TranslateMessage(&Message);
+                    DispatchMessage(&Message);
+                } break;
+            }
         }
         
-        RunCRay(AppMemory);
+        RunCRay(&AppMemory, &Input);
         
         SwapBuffers(WindowDC);
         Sleep(2);

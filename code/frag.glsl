@@ -37,11 +37,11 @@ void InitScene()
     
     Spheres[1].P = vec3(1.0, 0.5, 0);
     Spheres[1].Radius = 0.5;
-    Spheres[1].MatID = 2;
+    Spheres[1].MatID = 3;
     
     Spheres[2].P = vec3(-1.0, 0.5, 0);
     Spheres[2].Radius = 0.5;
-    Spheres[2].MatID = 3;
+    Spheres[2].MatID = 2;
 }
 
 float Hash(in float Seed)
@@ -61,6 +61,11 @@ float RayIntersectSphere(in vec3 Ro, in vec3 Rd, float Radius)
     {
         float Root1 = (-B + sqrt(SqrtTerm)) / Denom;
         float Root2 = (-B - sqrt(SqrtTerm)) / Denom;
+        
+        if (min(Root1, Root2) < T_MIN)
+        {
+            return max(Root1, Root2);
+        }
         
         return min(Root1, Root2);
     }
@@ -173,7 +178,7 @@ void main()
     vec2 UV = 2.0 * FragP.xy - 1.0;
     vec2 delta = vec2(dFdx(UV.x), dFdy(UV.y));
     
-#define SAMPLE_COUNT 16
+#define SAMPLE_COUNT 8
     for (int SampleIndex = 0; SampleIndex < SAMPLE_COUNT; ++SampleIndex)
     {
         vec2 UV = 2.0 * FragP.xy - 1.0;
@@ -189,7 +194,9 @@ void main()
         
         vec3 Radiance = vec3(0);
         vec3 Attenuation = vec3(1);
-        vec3 EnvLight = vec3(1.5);
+        vec3 EnvLight = vec3(0.5);
+        vec3 L = normalize(vec3(-0.5f, 0.7f, -0.5f));
+        vec3 SunRadiance = vec3(2.0);
         
         vec3 CurrRo = Ro;
         vec3 CurrRd = Rd;
@@ -206,6 +213,14 @@ void main()
                 Attenuation *= Mat.Albedo;
                 
                 CurrRo = CurrRo + (T - T_MIN) * CurrRd;
+                
+                vec3 Garbage1;
+                int HitSun;
+                float SunT = Raytrace(CurrRo, L, Garbage1, HitSun);
+                if (SunT == T_MAX)
+                {
+                    Radiance += max(0.0, dot(L, NextN))*Attenuation*SunRadiance;
+                }
                 
                 float Seed1 = dot(CurrRo, vec3(73.4, 71.531, 58.731)) + 8.19*float(SampleIndex) + 7.3*Time;
                 float Seed2 = dot(CurrRo, vec3(11.9, 17.131, 83.351)) + 3.71*float(SampleIndex) + 17.1*Time;

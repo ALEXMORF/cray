@@ -3,11 +3,11 @@
 
 /*TODO(chen):
 
+. Import mesh
+. Raytrace Susan's head
 . Environment Map
 . glass ball
-. Import mesh
 . imgui for controlling lighting environments and such
-. Raytrace Susan's head
 . Progressive rendering
 
 */

@@ -3,7 +3,6 @@
 
 /*TODO(chen):
 
-. Improve camera
 . Environment Map
 . glass ball
 . Import mesh
@@ -116,40 +115,55 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height)
             glBindVertexArray(0);
         }
         
-        CRay->CamP = {0.0f, 1.0f, -2.0f};
+        CRay->CamP = {0.0f, 0.7f, -2.0f};
+        CRay->DraggedRotation = Quaternion();
+        CRay->CamOrientation = Quaternion(XAxis(), 0.1f);
         
         Memory->IsInitialized = true;
     }
     Clear(&GlobalTempArena);
     CRay->T += dT;
     
+    //NOTE(chen): handle mouse dragging
+    if (CRay->CamIsBeingDragged)
+    {
+        if (!Input->MouseIsDown)
+        {
+            CRay->CamIsBeingDragged = false;
+            CRay->CamOrientation = CRay->DraggedRotation * CRay->CamOrientation;
+            CRay->DraggedRotation = Quaternion();
+        }
+        else
+        {
+            v2 MousedP = Input->MouseP - CRay->StartMouseP;
+            quaternion YRot = Quaternion(YAxis(), MousedP.X);
+            v3 LocalXAxis = Rotate(XAxis(), YRot);
+            quaternion XRot = Quaternion(LocalXAxis, -MousedP.Y);
+            CRay->DraggedRotation = XRot * YRot;
+        }
+    }
+    else
+    {
+        if (Input->MouseIsDown)
+        {
+            CRay->CamIsBeingDragged = true;
+            CRay->StartMouseP = Input->MouseP;
+        }
+    }
+    
     v3 dP = {};
-    if (Input->Keys['W'])
-    {
-        dP.Z += 1.0;
-    }
-    if (Input->Keys['S'])
-    {
-        dP.Z -= 1.0;
-    }
-    if (Input->Keys['A'])
-    {
-        dP.X -= 1.0;
-    }
-    if (Input->Keys['D'])
-    {
-        dP.X += 1.0;
-    }
-    if (Input->Keys['Z'])
-    {
-        dP.Y -= 1.0;
-    }
-    if (Input->Keys['X'])
-    {
-        dP.Y += 1.0;
-    }
+    if (Input->Keys['W']) dP.Z += 1.0;
+    if (Input->Keys['S']) dP.Z -= 1.0;
+    if (Input->Keys['A']) dP.X -= 1.0;
+    if (Input->Keys['D']) dP.X += 1.0;
+    dP = Rotate(dP, CRay->DraggedRotation * CRay->CamOrientation);
+    dP.Y = 0.0f;
+    if (Input->Keys['Z']) dP.Y -= 1.0;
+    if (Input->Keys['X']) dP.Y += 1.0;
+    
     float CamSpeed = 1.0f;
     CRay->CamP += CamSpeed * dT * Normalize(dP);
+    CRay->CamLookAt = CRay->CamP + Rotate(ZAxis(), CRay->DraggedRotation * CRay->CamOrientation);
     
     glDisable(GL_DEPTH_TEST);
     glViewport(0, 0, Width, Height);
@@ -157,6 +171,8 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height)
     
     glUniform3f(glGetUniformLocation(CRay->Shader, "CamP"), 
                 CRay->CamP.X, CRay->CamP.Y, CRay->CamP.Z);
+    glUniform3f(glGetUniformLocation(CRay->Shader, "CamLookAt"), 
+                CRay->CamLookAt.X, CRay->CamLookAt.Y, CRay->CamLookAt.Z);
     glUniform1f(glGetUniformLocation(CRay->Shader, "Time"), CRay->T);
     f32 AspectRatio = (f32)Width / (f32)Height;
     glUniform1f(glGetUniformLocation(CRay->Shader, "AspectRatio"), AspectRatio);

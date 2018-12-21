@@ -5,12 +5,27 @@
 
 #undef APIENTRY
 #include <windows.h>
+#include <windowsx.h>
 #include <ShellScalingAPI.h>
 #include "win32_kernel.h"
 
 global_variable b32 GlobalAppIsRunning;
 global_variable int GlobalWindowWidth;
 global_variable int GlobalWindowHeight;
+global_variable input GlobalInput;
+
+inline v2
+Win32GetNormalizedMouseP(HWND Window, LPARAM LParam)
+{
+    v2 MouseP = {};
+    
+    win32_window_dimension WindowDim = Win32GetWindowDimension(Window);
+    MouseP.X = (f32)GET_X_LPARAM(LParam) / (f32)WindowDim.Width; 
+    MouseP.Y = 1.0f - (f32)GET_Y_LPARAM(LParam) / (f32)WindowDim.Height; 
+    MouseP = 2.0f * MouseP - V2(1.0f);
+    
+    return MouseP;
+}
 
 LRESULT CALLBACK
 Win32WindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
@@ -23,6 +38,23 @@ Win32WindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
         case WM_CLOSE:
         {
             GlobalAppIsRunning = false;
+        } break;
+        
+        case WM_LBUTTONDOWN:
+        {
+            GlobalInput.MouseIsDown = true;
+            GlobalInput.MouseP = Win32GetNormalizedMouseP(Window, LParam);
+        } break;
+        
+        case WM_LBUTTONUP:
+        {
+            GlobalInput.MouseIsDown = false;
+            GlobalInput.MouseP = Win32GetNormalizedMouseP(Window, LParam);
+        } break;
+        
+        case WM_MOUSEMOVE:
+        {
+            GlobalInput.MouseP = Win32GetNormalizedMouseP(Window, LParam);
         } break;
         
         case WM_SIZE:
@@ -58,8 +90,6 @@ WinMain(HINSTANCE CurrentInstance,
     Win32InitializeOpengl(WindowDC, 4, 4);
     LoadGLFunctions(Win32GetOpenglFunction);
     
-    input Input = {};
-    
     app_memory AppMemory = {};
     AppMemory.Size = MB(4);
     AppMemory.Data = Win32AllocateMemory(AppMemory.Size);
@@ -86,7 +116,7 @@ WinMain(HINSTANCE CurrentInstance,
                     
                     if (KeyWasDown != KeyIsDown)
                     {
-                        Input.Keys[KeyCode] = KeyIsDown;
+                        GlobalInput.Keys[KeyCode] = KeyIsDown;
                         
                         if (KeyIsDown && AltIsDown && KeyCode == VK_RETURN)
                         {
@@ -111,7 +141,7 @@ WinMain(HINSTANCE CurrentInstance,
         f32 ElapsedTimeInMS = Win32GetTimeElapsedInMS(LastCounter, Win32GetPerformanceCounter());
         f32 dT = ElapsedTimeInMS / 1000.0;
         LastCounter = Win32GetPerformanceCounter();
-        RunCRay(&AppMemory, &Input, dT, GlobalWindowWidth, GlobalWindowHeight);
+        RunCRay(&AppMemory, &GlobalInput, dT, GlobalWindowWidth, GlobalWindowHeight);
         
         SwapBuffers(WindowDC);
         Sleep(2);

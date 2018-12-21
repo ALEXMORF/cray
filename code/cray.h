@@ -13,11 +13,20 @@ struct app_memory
 struct input
 {
     b32 Keys[256];
+    
+    b32 MouseIsDown;
+    v2 MouseP;
 };
 
 struct cray
 {
+    b32 CamIsBeingDragged;
+    v2 StartMouseP;
+    quaternion DraggedRotation;
+    
+    quaternion CamOrientation;
     v3 CamP;
+    v3 CamLookAt;
     float T;
     
     memory_arena MainArena;

@@ -1,6 +1,7 @@
 #version 440 core
 
 uniform vec3 CamP;
+uniform vec3 CamLookAt;
 uniform float Time;
 uniform float AspectRatio;
 
@@ -92,15 +93,15 @@ material MatLookup(in int MatID)
     }
     else if (MatID == 1)
     {
-        return material(vec3(0.8, 0.4, 0.4), 0.0);
+        return material(vec3(0.8, 0.8, 0.8), 0.0);
     }
     else if (MatID == 2)
     {
-        return material(vec3(0.4, 0.8, 0.4), 0.0);
+        return material(vec3(0.2, 0.8, 0.2), 0.0);
     }
     else if (MatID == 3)
     {
-        return material(vec3(0.4, 0.4, 0.8), 0.0);
+        return material(vec3(0.8, 0.2, 0.2), 0.0);
     }
     else
     {
@@ -172,7 +173,7 @@ void main()
     vec2 UV = 2.0 * FragP.xy - 1.0;
     vec2 delta = vec2(dFdx(UV.x), dFdy(UV.y));
     
-#define SAMPLE_COUNT 8
+#define SAMPLE_COUNT 16
     for (int SampleIndex = 0; SampleIndex < SAMPLE_COUNT; ++SampleIndex)
     {
         vec2 UV = 2.0 * FragP.xy - 1.0;
@@ -180,7 +181,7 @@ void main()
         UV.y += delta.y * Hash(31.13*UV.y + 7.1*float(SampleIndex));
         
         vec3 Ro = CamP;
-        vec3 At = vec3(0, 0.5, 0);
+        vec3 At = CamLookAt;
         vec3 CamZ = normalize(At - Ro);
         vec3 CamX = normalize(cross(vec3(0, 1, 0), CamZ));
         vec3 CamY = cross(CamZ, CamX);
@@ -188,7 +189,7 @@ void main()
         
         vec3 Radiance = vec3(0);
         vec3 Attenuation = vec3(1);
-        vec3 EnvLight = vec3(1.0);
+        vec3 EnvLight = vec3(1.5);
         
         vec3 CurrRo = Ro;
         vec3 CurrRd = Rd;
@@ -204,7 +205,7 @@ void main()
                 material Mat = MatLookup(MatID);
                 Attenuation *= Mat.Albedo;
                 
-                CurrRo = CurrRo + (T - 0.001) * CurrRd;
+                CurrRo = CurrRo + (T - T_MIN) * CurrRd;
                 
                 float Seed1 = dot(CurrRo, vec3(73.4, 71.531, 58.731)) + 8.19*float(SampleIndex) + 7.3*Time;
                 float Seed2 = dot(CurrRo, vec3(11.9, 17.131, 83.351)) + 3.71*float(SampleIndex) + 17.1*Time;
@@ -222,5 +223,7 @@ void main()
         AvgRadiance += 1.0/float(SAMPLE_COUNT) * Radiance;
     }
     
+    AvgRadiance = 1.0-exp(-AvgRadiance);
+    AvgRadiance = sqrt(AvgRadiance);
     FragColor = AvgRadiance;
 }

@@ -6,6 +6,7 @@
 . Environment Map
 . glass ball
 . Import mesh
+. imgui for controlling lighting environments and such
 . Raytrace Susan's head
 . Progressive rendering
 

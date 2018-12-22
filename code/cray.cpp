@@ -3,9 +3,12 @@
 
 /*TODO(chen):
 
+. Fix broken camera orientation
+. Ray-vs-Triangle routine
 . Import mesh
 . Raytrace Susan's head
-. Environment Map
+. Proper Sky model: http://blog.hvidtfeldts.net/index.php/2015/01/path-tracing-3d-fractals/
+. Filmic tonemapping
 . glass ball
 . imgui for controlling lighting environments and such
 . Progressive rendering
@@ -138,7 +141,7 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height)
         {
             v2 MousedP = Input->MouseP - CRay->StartMouseP;
             quaternion YRot = Quaternion(YAxis(), MousedP.X);
-            v3 LocalXAxis = Rotate(XAxis(), YRot);
+            v3 LocalXAxis = Rotate(XAxis(), YRot * CRay->CamOrientation);
             quaternion XRot = Quaternion(LocalXAxis, -MousedP.Y);
             CRay->DraggedRotation = XRot * YRot;
         }

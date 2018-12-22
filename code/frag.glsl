@@ -12,6 +12,20 @@ out vec3 FragColor;
 #define T_MAX 10e31
 #define Pi 3.1415926
 
+vec2 GlobalSeed = FragP.xy*(Time+1.0);
+
+vec2 Rand2() {
+    GlobalSeed+=vec2(-1,1);
+	// implementation based on: lumina.sourceforge.net/Tutorials/Noise.html
+    return vec2(fract(sin(dot(GlobalSeed.xy ,vec2(12.9898,78.233))) * 43758.5453),
+                fract(cos(dot(GlobalSeed.xy ,vec2(4.898,7.23))) * 23421.631));
+};
+
+float Hash(in float Seed)
+{
+    return fract(7831.131*sin(517.131*Seed));
+}
+
 struct material
 {
     vec3 Albedo;
@@ -22,6 +36,13 @@ struct sphere
 {
     float Radius;
     vec3 P;
+    int MatID;
+};
+
+struct contact_info
+{
+    float T;
+    vec3 N;
     int MatID;
 };
 
@@ -42,11 +63,6 @@ void InitScene()
     Spheres[2].P = vec3(-1.0, 0.5, 0);
     Spheres[2].Radius = 0.5;
     Spheres[2].MatID = 2;
-}
-
-float Hash(in float Seed)
-{
-    return fract(7831.131*sin(517.131*Seed));
 }
 
 float RayIntersectSphere(in vec3 Ro, in vec3 Rd, float Radius)
@@ -115,54 +131,75 @@ material MatLookup(in int MatID)
     }
 }
 
-float Raytrace(in vec3 Ro, in vec3 Rd, out vec3 N, out int MatID)
+contact_info Raytrace(in vec3 Ro, in vec3 Rd)
 {
-    float MinT = T_MAX;
-    float T = T_MAX;
-    MatID = -1;
+    contact_info Res;
+    Res.T = T_MAX;
+    Res.MatID = -1;
     
     // spheres
     for (int SphereIndex = 0; SphereIndex < SPHERE_COUNT; ++SphereIndex)
     {
         sphere Sphere = Spheres[SphereIndex];
-        T = RayIntersectSphere(Ro - Sphere.P, Rd, Sphere.Radius);
-        if (T > T_MIN && T < MinT)
+        float T = RayIntersectSphere(Ro - Sphere.P, Rd, Sphere.Radius);
+        if (T > T_MIN && T < Res.T)
         {
-            MinT = T;
-            MatID = Sphere.MatID;
-            N = normalize(Ro + T * Rd - Sphere.P);
+            Res.T = T;
+            Res.MatID = Sphere.MatID;
+            Res.N = normalize(Ro + T * Rd - Sphere.P);
         }
     }
     
     // plane
-    T = RayIntersectPlane(Ro, Rd, vec3(0,1,0), 0);
-    if (T > T_MIN && T < MinT)
+    float T = RayIntersectPlane(Ro, Rd, vec3(0,1,0), 0);
+    if (T > T_MIN && T < Res.T)
     {
-        MinT = T;
-        MatID = 0;
-        N = vec3(0, 1, 0);
+        Res.T = T;
+        Res.MatID = 0;
+        Res.N = vec3(0, 1, 0);
     }
     
-    return MinT;
+    return Res;
 }
 
-vec3 RandomBounce(in vec3 N, float Seed1, float Seed2)
+vec3 Ortho(in vec3 X)
 {
-    vec3 X, Y;
+    vec3 Res;
     
-    if (dot(N, vec3(0,1,0)) < 0.99)
+    if (dot(X, vec3(0,1,0)) < 0.99)
     {
-        X = normalize(cross(N, vec3(0, 1, 0)));
-        Y = cross(N, X);
+        Res = normalize(cross(X, vec3(0, 1, 0)));
     }
     else
     {
-        X = normalize(cross(N, vec3(1, 0, 0)));
-        Y = cross(N, X);
+        Res = normalize(cross(X, vec3(1, 0, 0)));
     }
     
-    float Radius = sqrt(Hash(Seed1));
-    float Theta = 2.0 * Pi * Hash(Seed2);
+    return Res;
+}
+
+vec3 SampleHemisphere(in vec3 N)
+{
+    vec3 X = Ortho(N);
+    vec3 Y = cross(N, X);
+    
+    vec2 R = Rand2();
+    float Radius = sqrt(R.x);
+    float Theta = 2.0 * Pi * R.y;
+    
+    X *= Radius * cos(Theta);
+    Y *= Radius * sin(Theta);
+    return X + Y + N * sqrt(1.0 - Radius*Radius);
+}
+
+vec3 SampleCone(in vec3 N, in float Extent)
+{
+    vec3 X = Ortho(N);
+    vec3 Y = cross(N, X);
+    
+    vec2 R = Rand2();
+    float Theta = R.x * 2.0 * Pi;
+    float Radius = sqrt(R.y * Extent);
     
     X *= Radius * cos(Theta);
     Y *= Radius * sin(Theta);
@@ -176,14 +213,13 @@ void main()
     vec3 AvgRadiance = vec3(0);
     
     vec2 UV = 2.0 * FragP.xy - 1.0;
-    vec2 delta = vec2(dFdx(UV.x), dFdy(UV.y));
+    vec2 Delta = vec2(dFdx(UV.x), dFdy(UV.y));
     
 #define SAMPLE_COUNT 8
     for (int SampleIndex = 0; SampleIndex < SAMPLE_COUNT; ++SampleIndex)
     {
         vec2 UV = 2.0 * FragP.xy - 1.0;
-        UV.x += delta.x * Hash(13.17*UV.x + 3.7*float(SampleIndex));
-        UV.y += delta.y * Hash(31.13*UV.y + 7.1*float(SampleIndex));
+        UV += Delta * Rand2();
         
         vec3 Ro = CamP;
         vec3 At = CamLookAt;
@@ -194,39 +230,31 @@ void main()
         
         vec3 Radiance = vec3(0);
         vec3 Attenuation = vec3(1);
-        vec3 EnvLight = vec3(0.5);
+        vec3 EnvLight = vec3(0.3, 0.4, 0.5);
         vec3 L = normalize(vec3(-0.5f, 0.7f, -0.5f));
-        vec3 SunRadiance = vec3(2.0);
+        vec3 SunRadiance = vec3(1.0);
         
         vec3 CurrRo = Ro;
         vec3 CurrRd = Rd;
         
         for (int BounceIndex = 0; BounceIndex < 8; ++BounceIndex)
         {
-            int MatID;
-            vec3 NextN;
-            float T = Raytrace(CurrRo, CurrRd, NextN, MatID);
+            contact_info Hit = Raytrace(CurrRo, CurrRd);
             
-            if (T > T_MIN && T < T_MAX)
+            if (Hit.T > T_MIN && Hit.T < T_MAX)
             {
-                material Mat = MatLookup(MatID);
+                material Mat = MatLookup(Hit.MatID);
                 Attenuation *= Mat.Albedo;
+                CurrRo = CurrRo + (Hit.T - T_MIN) * CurrRd;
                 
-                CurrRo = CurrRo + (T - T_MIN) * CurrRd;
-                
-                vec3 Garbage1;
-                int HitSun;
-                float SunT = Raytrace(CurrRo, L, Garbage1, HitSun);
-                if (SunT == T_MAX)
+                vec3 LSample = SampleCone(L, 6e-5);
+                float SunLightRatio = dot(LSample, Hit.N);
+                if (SunLightRatio > 0.0 && Raytrace(CurrRo, LSample).T == T_MAX)
                 {
-                    Radiance += max(0.0, dot(L, NextN))*Attenuation*SunRadiance;
+                    Radiance += Attenuation*SunLightRatio*SunRadiance;
                 }
                 
-                float Seed1 = dot(CurrRo, vec3(73.4, 71.531, 58.731)) + 8.19*float(SampleIndex) + 7.3*Time;
-                float Seed2 = dot(CurrRo, vec3(11.9, 17.131, 83.351)) + 3.71*float(SampleIndex) + 17.1*Time;
-                
-                CurrRd = mix(RandomBounce(NextN, Seed1, Seed2), 
-                             reflect(CurrRd, NextN), Mat.Specular);
+                CurrRd = mix(SampleHemisphere(Hit.N), reflect(CurrRd, Hit.N), Mat.Specular);
             }
             else
             {

@@ -8,11 +8,11 @@
 /*TODO(chen):
 
 . Optimize with spatial partitioning
+. imgui for controlling renderer (sampling rate, max bounce count)
 . Proper Sky model: http://blog.hvidtfeldts.net/index.php/2015/01/path-tracing-3d-fractals/
 . Filmic tonemapping
 . glass ball
 . Multisample progressive rendering
-. imgui for controlling renderer (sampling rate)
 
 */
 

@@ -3,6 +3,9 @@
 uniform sampler2D PrevSamplesTex;
 uniform int SampleCountSoFar;
 
+uniform int SamplePerPixel;
+uniform int MaxBounceCount;
+
 uniform vec3 CamP;
 uniform vec3 CamLookAt;
 uniform float Time;
@@ -274,8 +277,7 @@ void main()
     vec2 UV = 2.0 * FragP.xy - 1.0;
     vec2 Delta = vec2(dFdx(UV.x), dFdy(UV.y));
     
-#define SAMPLE_COUNT 1
-    for (int SampleIndex = 0; SampleIndex < SAMPLE_COUNT; ++SampleIndex)
+    for (int SampleIndex = 0; SampleIndex < SamplePerPixel; ++SampleIndex)
     {
         vec2 UV = 2.0 * FragP.xy - 1.0;
         UV += Delta * Rand2();
@@ -296,7 +298,7 @@ void main()
         vec3 CurrRo = Ro;
         vec3 CurrRd = Rd;
         
-        for (int BounceIndex = 0; BounceIndex < 8; ++BounceIndex)
+        for (int BounceIndex = 0; BounceIndex < MaxBounceCount; ++BounceIndex)
         {
             contact_info Hit = Raytrace(CurrRo, CurrRd);
             
@@ -322,7 +324,7 @@ void main()
             }
         }
         
-        AvgRadiance += 1.0/float(SAMPLE_COUNT) * Radiance;
+        AvgRadiance += 1.0/float(SamplePerPixel) * Radiance;
     }
     
     int SampleCount = SampleCountSoFar + 1;

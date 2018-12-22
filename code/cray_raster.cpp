@@ -164,6 +164,9 @@ InitGLRasterizer(int Width, int Height)
     Rasterizer.LastBufferIndex = 0;
     Rasterizer.BufferIndex = 1;
     
+    Rasterizer.SamplePerPixel = 1;
+    Rasterizer.MaxBounceCount = 2;
+    
     return Rasterizer;
 }
 
@@ -202,6 +205,9 @@ Rasterize(gl_rasterizer *Rasterizer)
 {
     glBindFramebuffer(GL_FRAMEBUFFER, Rasterizer->BackBuffer.Handle);
     glDrawBuffer(GL_COLOR_ATTACHMENT0 + Rasterizer->BufferIndex);
+    
+    PushUniformI32(Rasterizer, "SamplePerPixel", Rasterizer->SamplePerPixel);
+    PushUniformI32(Rasterizer, "MaxBounceCount", Rasterizer->MaxBounceCount);
     
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, Rasterizer->BackBuffer.TexHandles[Rasterizer->LastBufferIndex]);

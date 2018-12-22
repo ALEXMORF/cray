@@ -9,6 +9,9 @@ struct framebuffer
 
 struct gl_rasterizer
 {
+    int SamplePerPixel;
+    int MaxBounceCount;
+    
     GLuint SampleShader;
     GLuint BlitShader;
     GLuint CurrentShader;

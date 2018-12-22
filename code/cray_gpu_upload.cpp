@@ -1,29 +1,47 @@
+internal obj_model
+InstantiateObjTemporarily(char *Path, mat4 XForm)
+{
+    obj_model Model = LoadObj(Path, &GlobalTempArena);
+    
+    for (int VertIndex = 0; VertIndex < Model.VertexCount; ++VertIndex)
+    {
+        Model.Vertices[VertIndex].P = ApplyMat4(Model.Vertices[VertIndex].P, XForm);
+        Model.Vertices[VertIndex].N *= Mat3(XForm);
+    }
+    
+    return Model;
+}
+
 internal uploaded_data
 UploadGeometryToGPU()
 {
     uploaded_data Uploaded = {};
     
-    obj_model MonkeyModel = LoadObj("../data/lowpoly_monkey", &GlobalTempArena);
-    for (int VertIndex = 0; VertIndex < MonkeyModel.VertexCount; ++VertIndex)
-    {
-        MonkeyModel.Vertices[VertIndex].P *= 0.5f;
-        MonkeyModel.Vertices[VertIndex].P.Y += 0.6f;
-        MonkeyModel.Vertices[VertIndex].P.Z *= -1.0f;
-    }
+    mat4 MonkeyXForm = Mat4Scale(0.5f) * Mat4RotateAroundY(Pi32) * Mat4Translate(0.0f, 0.5f, 0.0f);
+    mat4 RoomXForm = Mat4RotateAroundY(Pi32) * Mat4Translate(0.0f, 0.0f, 4.0f);
     
-    obj_model RoomModel = LoadObj("../data/light_room", &GlobalTempArena);
-    for (int VertIndex = 0; VertIndex < RoomModel.VertexCount; ++VertIndex)
-    {
-        RoomModel.Vertices[VertIndex].P.Z += 5.0f;
-    }
+    int ModelCount = 0;
+    obj_model Models[200] = {};
+    //Models[ModelCount++] = InstantiateObjTemporarily("../data/lowpoly_monkey", MonkeyXForm);
+    Models[ModelCount++] = InstantiateObjTemporarily("../data/light_room", RoomXForm);
     
-    int VertexCount = MonkeyModel.VertexCount;
+    //NOTE(chen): push into vertices
+    int VertexCount = 0;
+    for (int ModelIndex = 0; ModelIndex < ModelCount; ++ModelIndex)
+    {
+        VertexCount += Models[ModelIndex].VertexCount;
+    }
     vertex *Vertices = PushTempArray(VertexCount, vertex);
     {
         int VertexCursor = 0;
-        for (int VertIndex = 0; VertIndex < MonkeyModel.VertexCount; ++VertIndex)
+        
+        for (int ModelIndex = 0; ModelIndex < ModelCount; ++ModelIndex)
         {
-            Vertices[VertexCursor++] = MonkeyModel.Vertices[VertIndex];
+            obj_model *Model = Models + ModelIndex;
+            for (int VertIndex = 0; VertIndex < Model->VertexCount; ++VertIndex)
+            {
+                Vertices[VertexCursor++] = Model->Vertices[VertIndex];
+            }
         }
     }
     

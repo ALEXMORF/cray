@@ -7,11 +7,11 @@
 
 /*TODO(chen):
 
-. helper for transforming models
-. Multisample progressive rendering
+. Optimize with spatial partitioning
 . Proper Sky model: http://blog.hvidtfeldts.net/index.php/2015/01/path-tracing-3d-fractals/
 . Filmic tonemapping
 . glass ball
+. Multisample progressive rendering
 . imgui for controlling renderer (sampling rate)
 
 */

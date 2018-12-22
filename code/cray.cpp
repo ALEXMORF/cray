@@ -7,7 +7,7 @@
 
 /*TODO(chen):
 
-. 1spp Progressive rendering
+. helper for transforming models
 . Multisample progressive rendering
 . Proper Sky model: http://blog.hvidtfeldts.net/index.php/2015/01/path-tracing-3d-fractals/
 . Filmic tonemapping

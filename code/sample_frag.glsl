@@ -59,23 +59,20 @@ struct contact_info
     int MatID;
 };
 
-#define SPHERE_COUNT 3
+#define SPHERE_COUNT 2
 
-sphere Spheres[3];
+sphere Spheres[2];
 
 void InitScene()
 {
-    Spheres[0].P = vec3(0, 0.5, 0);
+    
+    Spheres[0].P = vec3(1.1, 0.5, 0);
     Spheres[0].Radius = 0.5;
-    Spheres[0].MatID = 1;
+    Spheres[0].MatID = 3;
     
-    Spheres[1].P = vec3(1.0, 0.5, 0);
+    Spheres[1].P = vec3(-1.1, 0.5, 0);
     Spheres[1].Radius = 0.5;
-    Spheres[1].MatID = 3;
-    
-    Spheres[2].P = vec3(-1.0, 0.5, 0);
-    Spheres[2].Radius = 0.5;
-    Spheres[2].MatID = 2;
+    Spheres[1].MatID = 2;
 }
 
 float RayIntersectSphere(in vec3 Ro, in vec3 Rd, float Radius)
@@ -177,7 +174,6 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
     Res.T = T_MAX;
     Res.MatID = -1;
     
-#if 0
     // spheres
     for (int SphereIndex = 0; SphereIndex < SPHERE_COUNT; ++SphereIndex)
     {
@@ -190,7 +186,6 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
             Res.N = normalize(Ro + T * Rd - Sphere.P);
         }
     }
-#endif
     
     // plane
     {
@@ -213,7 +208,13 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
         {
             Res.T = T;
             Res.MatID = 5;
-            Res.N = vec3(0, 0, Triangles[TriIndex].N);
+            Res.N = Triangles[TriIndex].N;
+#if 0
+            if (dot(Res.N, Rd) > 0.0)
+            {
+                Res.N = -Res.N;
+            }
+#endif
         }
     }
     
@@ -224,7 +225,7 @@ vec3 Ortho(in vec3 X)
 {
     vec3 Res;
     
-    if (dot(X, vec3(0,1,0)) < 0.99)
+    if (abs(dot(X, vec3(0,1,0))) < 0.99)
     {
         Res = normalize(cross(X, vec3(0, 1, 0)));
     }

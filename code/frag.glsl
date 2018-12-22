@@ -266,6 +266,8 @@ void main()
         vec3 Attenuation = vec3(1);
         vec3 EnvLight = vec3(0.3, 0.4, 0.5);
         vec3 L = normalize(vec3(-0.5f, 0.7f, -0.5f));
+        L.x *= sin(Time);
+        L.z *= cos(Time);
         vec3 SunRadiance = vec3(2.0);
         
         vec3 CurrRo = Ro;

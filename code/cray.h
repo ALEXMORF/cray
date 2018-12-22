@@ -2,6 +2,9 @@
 
 #include "cray_memory.h"
 #include "cray_obj.h"
+#include "cray_gpu_upload.h"
+#include "cray_scene.h"
+#include "cray_raster.h"
 
 struct app_memory
 {
@@ -21,20 +24,11 @@ struct input
 
 struct cray
 {
-    b32 CamIsBeingDragged;
-    v2 StartMouseP;
-    quaternion DraggedRotation;
-    
-    quaternion CamOrientation;
-    v3 CamP;
-    v3 CamLookAt;
-    float T;
-    
     memory_arena MainArena;
-    GLuint Shader;
-    GLuint QuadVAO;
+    gl_rasterizer Rasterizer;
+    uploaded_data Uploaded;
+    scene Scene;
     
-    GLuint SSBO;
-    int VertexCount;
+    float T;
 };
 

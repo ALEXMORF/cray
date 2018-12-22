@@ -439,6 +439,18 @@ operator*(v3 A, v3 B)
     return Result;
 }
 
+inline bool 
+operator==(v3 A, v3 B)
+{
+    return A.X == B.X && A.Y == B.Y && A.Z == B.Z;
+}
+
+inline bool 
+operator!=(v3 A, v3 B)
+{
+    return !(A == B);
+}
+
 inline v3
 operator*(f32 S, v3 A)
 {

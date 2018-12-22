@@ -40,3 +40,5 @@ typedef bool b8;
 #define KB(Value) (1024LL*(Value))
 #define MB(Value) (1024LL*KB(Value))
 #define GB(Value) (1024LL*MB(Value))
+
+#define ARRAY_COUNT(Array) (sizeof(Array)/sizeof((Array)[0]))

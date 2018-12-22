@@ -1,22 +1,26 @@
 #version 440 core
 
+uniform sampler2D PrevSamplesTex;
+uniform int SampleCountSoFar;
+
 uniform vec3 CamP;
 uniform vec3 CamLookAt;
 uniform float Time;
 uniform float AspectRatio;
 
-uniform int VertexCount;
+uniform int TriangleCount;
 
-struct vertex
+struct triangle
 {
-    vec4 P;
-    vec4 N;
-    vec4 Albedo;
+    vec3 A;
+    vec3 B;
+    vec3 C;
+    vec3 N;
 };
 
-layout(std430, binding = 0) buffer VertBuffer
+layout(std430, binding = 0) buffer TriBuffer
 {
-    vertex Vertices[];
+    triangle Triangles[];
 };
 
 in vec3 FragP;
@@ -199,35 +203,19 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
         }
     }
     
-    // triangles
-#if 0
+    for (int TriIndex = 0; TriIndex < TriangleCount; ++TriIndex)
     {
         float T = RayIntersectTriangle(Ro, Rd, 
-                                       vec3(-0.3 + sin(Time), 1.1, -0.6), 
-                                       vec3(0.3 + sin(Time), 1.1, -0.6), 
-                                       vec3(0 + sin(Time), 0.5, -0.6));
-        if (T > T_MIN && T < Res.T)
-        {
-            Res.T = T;
-            Res.MatID = 4;
-            Res.N = vec3(0, 0, -sign(Rd.z));
-        }
-    }
-#else
-    for (int VertIndex = 0; VertIndex < VertexCount; VertIndex += 3)
-    {
-        float T = RayIntersectTriangle(Ro, Rd, 
-                                       Vertices[VertIndex].P.xyz,
-                                       Vertices[VertIndex+1].P.xyz,
-                                       Vertices[VertIndex+2].P.xyz);
+                                       Triangles[TriIndex].A,
+                                       Triangles[TriIndex].B,
+                                       Triangles[TriIndex].C);
         if (T > T_MIN && T < Res.T)
         {
             Res.T = T;
             Res.MatID = 5;
-            Res.N = vec3(0, 0, Vertices[VertIndex].N.xyz);
+            Res.N = vec3(0, 0, Triangles[TriIndex].N);
         }
     }
-#endif
     
     return Res;
 }
@@ -336,7 +324,10 @@ void main()
         AvgRadiance += 1.0/float(SAMPLE_COUNT) * Radiance;
     }
     
-    AvgRadiance = 1.0-exp(-AvgRadiance);
-    AvgRadiance = sqrt(AvgRadiance);
-    FragColor = AvgRadiance;
+    int SampleCount = SampleCountSoFar + 1;
+    float CurrSampleWeight = 1.0 / float(SampleCount);
+    vec3 PrevSamplesAvg = texture(PrevSamplesTex, FragP.xy).rgb;
+    vec3 SamplesAvg = ((1.0 - CurrSampleWeight) * PrevSamplesAvg + 
+                       CurrSampleWeight * AvgRadiance);
+    FragColor = SamplesAvg;
 }

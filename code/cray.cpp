@@ -1,39 +1,18 @@
 #include "cray.h"
 #include "cray_memory.cpp"
+#include "cray_obj.cpp"
 
 /*TODO(chen):
 
-. Import mesh
-. Raytrace Susan's head
+. clean up the code
+. work-around ugly padding issues & figure out a compact way to upload model (vertices, normals, materials)
+. Progressive rendering
 . Proper Sky model: http://blog.hvidtfeldts.net/index.php/2015/01/path-tracing-3d-fractals/
 . Filmic tonemapping
 . glass ball
 . imgui for controlling lighting environments and such
-. Progressive rendering
 
 */
-
-internal char *
-ReadFileTemporarily(char *FilePath)
-{
-    char *Buffer = 0;
-    
-    FILE *File = fopen(FilePath, "rb");
-    if (File)
-    {
-        fseek(File, 0, SEEK_END);
-        int FileSize = ftell(File);
-        rewind(File);
-        
-        Buffer = PushTempArray(FileSize+1, char);
-        Buffer[FileSize] = 0;
-        fread(Buffer, 1, FileSize, File);
-        
-        fclose(File);
-    }
-    
-    return Buffer;
-}
 
 internal GLuint
 CompileShader(char *FilePath, GLenum Type)
@@ -68,7 +47,7 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height)
         u8 *RestOfMemory = (u8 *)Memory->Data + sizeof(cray);
         int RestOfMemorySize = Memory->Size - sizeof(cray);
         CRay->MainArena = InitMemoryArena(RestOfMemory, RestOfMemorySize);
-        GlobalTempArena = PushMemoryArena(&CRay->MainArena, KB(32));
+        GlobalTempArena = PushMemoryArena(&CRay->MainArena, MB(2));
         
         // make shader
         {
@@ -121,6 +100,26 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height)
         CRay->DraggedRotation = Quaternion();
         CRay->CamOrientation = Quaternion(XAxis(), 0.1f);
         
+        //obj_model MonkeyModel = LoadObj("../data/monkey", &CRay->MainArena);
+        obj_model MonkeyModel = LoadObj("../data/lowpoly_monkey", &GlobalTempArena);
+        
+        for (int VertIndex = 0; VertIndex < MonkeyModel.VertexCount; ++VertIndex)
+        {
+            MonkeyModel.Vertices[VertIndex].P *= 0.5f;
+            MonkeyModel.Vertices[VertIndex].P.Y += 0.6f;
+            MonkeyModel.Vertices[VertIndex].P.Z *= -1.0f;
+        }
+        
+        //NOTE(chen): upload vertices onto SSBO
+        glGenBuffers(1, &CRay->SSBO);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, CRay->SSBO);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 
+                     MonkeyModel.VertexCount*sizeof(vertex), 
+                     MonkeyModel.Vertices, GL_STATIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, CRay->SSBO);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); 
+        CRay->VertexCount = MonkeyModel.VertexCount;
+        
         Memory->IsInitialized = true;
     }
     Clear(&GlobalTempArena);
@@ -170,6 +169,8 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height)
     glDisable(GL_DEPTH_TEST);
     glViewport(0, 0, Width, Height);
     glUseProgram(CRay->Shader);
+    
+    glUniform1i(glGetUniformLocation(CRay->Shader, "VertexCount"), CRay->VertexCount);
     
     glUniform3f(glGetUniformLocation(CRay->Shader, "CamP"), 
                 CRay->CamP.X, CRay->CamP.Y, CRay->CamP.Z);

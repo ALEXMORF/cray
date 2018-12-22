@@ -5,6 +5,20 @@ uniform vec3 CamLookAt;
 uniform float Time;
 uniform float AspectRatio;
 
+uniform int VertexCount;
+
+struct vertex
+{
+    vec4 P;
+    vec4 N;
+    vec4 Albedo;
+};
+
+layout(std430, binding = 0) buffer VertBuffer
+{
+    vertex Vertices[];
+};
+
 in vec3 FragP;
 out vec3 FragColor;
 
@@ -142,6 +156,10 @@ material MatLookup(in int MatID)
     {
         return material(vec3(0.8, 0.8, 0.2), 0.0);
     }
+    else if (MatID == 5)
+    {
+        return material(vec3(0.64, 0.64, 0.64), 0.0);
+    }
     else
     {
         //NOTE(chen): non-existent material. Returns a ugly color for debug
@@ -155,6 +173,7 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
     Res.T = T_MAX;
     Res.MatID = -1;
     
+#if 0
     // spheres
     for (int SphereIndex = 0; SphereIndex < SPHERE_COUNT; ++SphereIndex)
     {
@@ -167,6 +186,7 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
             Res.N = normalize(Ro + T * Rd - Sphere.P);
         }
     }
+#endif
     
     // plane
     {
@@ -179,7 +199,8 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
         }
     }
     
-    // triangle
+    // triangles
+#if 0
     {
         float T = RayIntersectTriangle(Ro, Rd, 
                                        vec3(-0.3 + sin(Time), 1.1, -0.6), 
@@ -192,6 +213,21 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
             Res.N = vec3(0, 0, -sign(Rd.z));
         }
     }
+#else
+    for (int VertIndex = 0; VertIndex < VertexCount; VertIndex += 3)
+    {
+        float T = RayIntersectTriangle(Ro, Rd, 
+                                       Vertices[VertIndex].P.xyz,
+                                       Vertices[VertIndex+1].P.xyz,
+                                       Vertices[VertIndex+2].P.xyz);
+        if (T > T_MIN && T < Res.T)
+        {
+            Res.T = T;
+            Res.MatID = 5;
+            Res.N = vec3(0, 0, Vertices[VertIndex].N.xyz);
+        }
+    }
+#endif
     
     return Res;
 }
@@ -249,7 +285,7 @@ void main()
     vec2 UV = 2.0 * FragP.xy - 1.0;
     vec2 Delta = vec2(dFdx(UV.x), dFdy(UV.y));
     
-#define SAMPLE_COUNT 8
+#define SAMPLE_COUNT 1
     for (int SampleIndex = 0; SampleIndex < SAMPLE_COUNT; ++SampleIndex)
     {
         vec2 UV = 2.0 * FragP.xy - 1.0;
@@ -266,8 +302,6 @@ void main()
         vec3 Attenuation = vec3(1);
         vec3 EnvLight = vec3(0.3, 0.4, 0.5);
         vec3 L = normalize(vec3(-0.5f, 0.7f, -0.5f));
-        L.x *= sin(Time);
-        L.z *= cos(Time);
         vec3 SunRadiance = vec3(2.0);
         
         vec3 CurrRo = Ro;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cray_memory.h"
+#include "cray_obj.h"
 
 struct app_memory
 {
@@ -32,5 +33,8 @@ struct cray
     memory_arena MainArena;
     GLuint Shader;
     GLuint QuadVAO;
+    
+    GLuint SSBO;
+    int VertexCount;
 };
 

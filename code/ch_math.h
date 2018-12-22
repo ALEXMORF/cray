@@ -124,6 +124,16 @@ Square(f32 A)
     return A * A;
 }
 
+inline v3
+Square(v3 A)
+{
+    v3 Result = {};
+    Result.X = Square(A.X);
+    Result.Y = Square(A.Y);
+    Result.Z = Square(A.Z);
+    return Result;
+}
+
 inline b32
 IsInRange(f32 Value, f32 Min, f32 Max)
 {

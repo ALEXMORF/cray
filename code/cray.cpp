@@ -3,8 +3,6 @@
 
 /*TODO(chen):
 
-. Fix broken camera orientation
-. Ray-vs-Triangle routine
 . Import mesh
 . Raytrace Susan's head
 . Proper Sky model: http://blog.hvidtfeldts.net/index.php/2015/01/path-tracing-3d-fractals/

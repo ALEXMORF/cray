@@ -15,16 +15,11 @@ out vec3 FragColor;
 vec2 GlobalSeed = FragP.xy*(Time+1.0);
 
 vec2 Rand2() {
-    GlobalSeed+=vec2(-1,1);
+    GlobalSeed += vec2(-1,1);
 	// implementation based on: lumina.sourceforge.net/Tutorials/Noise.html
     return vec2(fract(sin(dot(GlobalSeed.xy ,vec2(12.9898,78.233))) * 43758.5453),
                 fract(cos(dot(GlobalSeed.xy ,vec2(4.898,7.23))) * 23421.631));
 };
-
-float Hash(in float Seed)
-{
-    return fract(7831.131*sin(517.131*Seed));
-}
 
 struct material
 {
@@ -106,6 +101,25 @@ float RayIntersectPlane(in vec3 Ro, in vec3 Rd, in vec3 N, in float C)
     }
 }
 
+float RayIntersectTriangle(in vec3 Ro, in vec3 Rd, 
+                           in vec3 A, in vec3 B, in vec3 C)
+{
+    vec3 AC = C - A;
+    vec3 BC = C - B;
+    vec3 RoC = C - Ro;
+    
+    vec3 N = cross(AC, BC);
+    vec3 Q = cross(Rd, RoC);
+    
+    float InvDet = 1.0 / dot(Rd, N);
+    float T = InvDet * dot(RoC, N);
+    float U = InvDet * dot(BC, Q);
+    float V = InvDet * dot(AC, -Q);
+    
+    if (U < 0.0 || U > 1.0 || V < 0.0 || (U+V) > 1.0) return -1.0;
+    return T;
+}
+
 material MatLookup(in int MatID)
 {
     if (MatID == 0)
@@ -123,6 +137,10 @@ material MatLookup(in int MatID)
     else if (MatID == 3)
     {
         return material(vec3(0.8, 0.2, 0.2), 0.0);
+    }
+    else if (MatID == 4)
+    {
+        return material(vec3(0.8, 0.8, 0.2), 0.0);
     }
     else
     {
@@ -151,12 +169,28 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
     }
     
     // plane
-    float T = RayIntersectPlane(Ro, Rd, vec3(0,1,0), 0);
-    if (T > T_MIN && T < Res.T)
     {
-        Res.T = T;
-        Res.MatID = 0;
-        Res.N = vec3(0, 1, 0);
+        float T = RayIntersectPlane(Ro, Rd, vec3(0,1,0), 0);
+        if (T > T_MIN && T < Res.T)
+        {
+            Res.T = T;
+            Res.MatID = 0;
+            Res.N = vec3(0, 1, 0);
+        }
+    }
+    
+    // triangle
+    {
+        float T = RayIntersectTriangle(Ro, Rd, 
+                                       vec3(-0.3 + sin(Time), 1.1, -0.6), 
+                                       vec3(0.3 + sin(Time), 1.1, -0.6), 
+                                       vec3(0 + sin(Time), 0.5, -0.6));
+        if (T > T_MIN && T < Res.T)
+        {
+            Res.T = T;
+            Res.MatID = 4;
+            Res.N = vec3(0, 0, -sign(Rd.z));
+        }
     }
     
     return Res;
@@ -232,7 +266,7 @@ void main()
         vec3 Attenuation = vec3(1);
         vec3 EnvLight = vec3(0.3, 0.4, 0.5);
         vec3 L = normalize(vec3(-0.5f, 0.7f, -0.5f));
-        vec3 SunRadiance = vec3(1.0);
+        vec3 SunRadiance = vec3(2.0);
         
         vec3 CurrRo = Ro;
         vec3 CurrRd = Rd;

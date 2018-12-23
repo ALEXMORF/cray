@@ -11,6 +11,8 @@ struct packed_triangle
     f32 Padding3;
     v3 N;
     f32 Padding4;
+    v3 Albedo;
+    f32 Padding5;
 };
 #pragma pack(pop)
 

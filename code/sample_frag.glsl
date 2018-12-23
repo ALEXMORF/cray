@@ -19,6 +19,7 @@ struct triangle
     vec3 B;
     vec3 C;
     vec3 N;
+    vec3 Albedo;
 };
 
 layout(std430, binding = 0) buffer TriBuffer
@@ -42,24 +43,18 @@ vec2 Rand2() {
                 fract(cos(dot(GlobalSeed.xy ,vec2(4.898,7.23))) * 23421.631));
 };
 
-struct material
-{
-    vec3 Albedo;
-    float Specular;
-};
-
 struct sphere
 {
     float Radius;
     vec3 P;
-    int MatID;
+    vec3 Albedo;
 };
 
 struct contact_info
 {
     float T;
     vec3 N;
-    int MatID;
+    vec3 Albedo;
 };
 
 #define SPHERE_COUNT 2
@@ -68,14 +63,13 @@ sphere Spheres[2];
 
 void InitScene()
 {
-    
-    Spheres[0].P = vec3(1.1, 0.5, 0);
+    Spheres[0].P = vec3(1.1, 0.5, 0.0);
     Spheres[0].Radius = 0.5;
-    Spheres[0].MatID = 3;
+    Spheres[0].Albedo = vec3(0.8, 0.2, 0.2);
     
-    Spheres[1].P = vec3(-1.1, 0.5, 0);
+    Spheres[1].P = vec3(-1.1, 0.5, 0.0);
     Spheres[1].Radius = 0.5;
-    Spheres[1].MatID = 2;
+    Spheres[1].Albedo = vec3(0.2, 0.8, 0.2);
 }
 
 float RayIntersectSphere(in vec3 Ro, in vec3 Rd, float Radius)
@@ -138,45 +132,12 @@ float RayIntersectTriangle(in vec3 Ro, in vec3 Rd,
     return T;
 }
 
-material MatLookup(in int MatID)
-{
-    if (MatID == 0)
-    {
-        return material(vec3(0.8), 0.0);
-    }
-    else if (MatID == 1)
-    {
-        return material(vec3(0.8, 0.8, 0.8), 0.0);
-    }
-    else if (MatID == 2)
-    {
-        return material(vec3(0.2, 0.8, 0.2), 0.0);
-    }
-    else if (MatID == 3)
-    {
-        return material(vec3(0.8, 0.2, 0.2), 0.0);
-    }
-    else if (MatID == 4)
-    {
-        return material(vec3(0.8, 0.8, 0.2), 0.0);
-    }
-    else if (MatID == 5)
-    {
-        return material(vec3(0.64, 0.64, 0.64), 0.0);
-    }
-    else
-    {
-        //NOTE(chen): non-existent material. Returns a ugly color for debug
-        return material(vec3(1, 0, 1), 0.0);
-    }
-}
-
 contact_info Raytrace(in vec3 Ro, in vec3 Rd)
 {
     contact_info Res;
     Res.T = T_MAX;
-    Res.MatID = -1;
     
+#if 0
     // spheres
     for (int SphereIndex = 0; SphereIndex < SPHERE_COUNT; ++SphereIndex)
     {
@@ -185,10 +146,11 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
         if (T > T_MIN && T < Res.T)
         {
             Res.T = T;
-            Res.MatID = Sphere.MatID;
+            Res.Albedo = Sphere.Albedo;
             Res.N = normalize(Ro + T * Rd - Sphere.P);
         }
     }
+#endif
     
     // plane
     {
@@ -196,7 +158,7 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
         if (T > T_MIN && T < Res.T)
         {
             Res.T = T;
-            Res.MatID = 0;
+            Res.Albedo = vec3(0.8);
             Res.N = vec3(0, 1, 0);
         }
     }
@@ -210,7 +172,7 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
         if (T > T_MIN && T < Res.T)
         {
             Res.T = T;
-            Res.MatID = 5;
+            Res.Albedo = Triangles[TriIndex].Albedo;
             Res.N = Triangles[TriIndex].N;
 #if 0
             if (dot(Res.N, Rd) > 0.0)
@@ -293,7 +255,7 @@ void main()
         vec3 Attenuation = vec3(1);
         vec3 EnvLight = vec3(0.3, 0.4, 0.5);
         vec3 L = normalize(vec3(0.5f, 0.4f, -0.5f));
-        vec3 SunRadiance = vec3(2.0);
+        vec3 SunRadiance = vec3(3.0);
         
         vec3 CurrRo = Ro;
         vec3 CurrRd = Rd;
@@ -304,8 +266,7 @@ void main()
             
             if (Hit.T > T_MIN && Hit.T < T_MAX)
             {
-                material Mat = MatLookup(Hit.MatID);
-                Attenuation *= Mat.Albedo;
+                Attenuation *= Hit.Albedo;
                 CurrRo = CurrRo + (Hit.T - T_MIN) * CurrRd;
                 
                 vec3 LSample = SampleCone(L, 6e-5);
@@ -315,7 +276,7 @@ void main()
                     Radiance += Attenuation*SunLightRatio*SunRadiance;
                 }
                 
-                CurrRd = mix(SampleHemisphere(Hit.N), reflect(CurrRd, Hit.N), Mat.Specular);
+                CurrRd = SampleHemisphere(Hit.N);
             }
             else
             {

@@ -17,13 +17,14 @@ UploadGeometryToGPU()
 {
     uploaded_data Uploaded = {};
     
-    mat4 MonkeyXForm = Mat4Scale(0.5f) * Mat4RotateAroundY(Pi32) * Mat4Translate(0.0f, 0.5f, 0.0f);
+    mat4 MonkeyXForm = Mat4Scale(0.5f) * Mat4RotateAroundY(Pi32) * Mat4Translate(0.0f, 0.6f, 0.0f);
     mat4 RoomXForm = Mat4RotateAroundY(Pi32) * Mat4Translate(0.0f, 0.0f, 4.0f);
     
     int ModelCount = 0;
     obj_model Models[200] = {};
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/lowpoly_monkey", MonkeyXForm);
     Models[ModelCount++] = InstantiateObjTemporarily("../data/light_room", RoomXForm);
+    //Models[ModelCount++] = InstantiateObjTemporarily("../data/ship", Mat4Translate(0.0f, 0.06f, 0.0f));
     
     //NOTE(chen): push into vertices
     int VertexCount = 0;
@@ -52,6 +53,8 @@ UploadGeometryToGPU()
         for (int TriIndex = 0; TriIndex < TriangleCount; ++TriIndex)
         {
             Triangles[TriIndex].N = Normalize(Vertices[VertexCursor].N);
+            Triangles[TriIndex].Albedo = Vertices[VertexCursor].Albedo;
+            
             Triangles[TriIndex].A = Vertices[VertexCursor++].P;
             Triangles[TriIndex].B = Vertices[VertexCursor++].P;
             Triangles[TriIndex].C = Vertices[VertexCursor++].P;

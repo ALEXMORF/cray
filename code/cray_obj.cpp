@@ -182,6 +182,7 @@ LoadObj(char *Path, memory_arena *Arena)
     int MatCount = 0;
     
     char *MtlFileContent = ReadFileTemporarily(MtlPath);
+    ASSERT(MtlFileContent);
     char *MtlFileWalker = MtlFileContent;
     
     while (*MtlFileWalker)
@@ -207,6 +208,7 @@ LoadObj(char *Path, memory_arena *Arena)
     }
     
     char *ObjFileContent = ReadFileTemporarily(ObjPath);
+    ASSERT(ObjFileContent);
     char *ObjFileWalker = ObjFileContent;
     
     int TempVertexCount = 0;

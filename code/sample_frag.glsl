@@ -27,6 +27,20 @@ layout(std430, binding = 0) buffer TriBuffer
     triangle Triangles[];
 };
 
+struct bvh_entry
+{
+    vec3 Min;
+    vec3 Max;
+    
+    int Offset; //NOTE(chen): Offset of either second child or primitive
+    int PrimitiveCount;
+};
+
+layout(std430, binding = 1) buffer BvhBuffer
+{
+    bvh_entry BvhEntries[];
+};
+
 in vec3 FragP;
 out vec3 FragColor;
 
@@ -132,6 +146,51 @@ float RayIntersectTriangle(in vec3 Ro, in vec3 Rd,
     return T;
 }
 
+//TODO(chen): need to handle div by zero?
+bool IntersectBound(in vec3 Ro, in vec3 Rd, in vec3 Min, in vec3 Max)
+{
+    vec3 InvRd = 1.0 / Rd;
+    
+    float MinT = (Min.x - Ro.x) * InvRd.x;
+    float MaxT = (Max.x - Ro.x) * InvRd.x;
+    
+    if (MinT > MaxT)
+    {
+        float Temp = MaxT;
+        MaxT = MinT;
+        MinT = Temp;
+    }
+    
+    float MinTY = (Min.y - Ro.y) * InvRd.y;
+    float MaxTY = (Max.y - Ro.y) * InvRd.y;
+    
+    if (MinTY > MaxTY)
+    {
+        float Temp = MaxTY;
+        MaxTY = MinTY;
+        MinTY = Temp;
+    }
+    
+    if (MinTY > MaxT || MaxTY < MinT) return false;
+    
+    MinT = max(MinT, MinTY);
+    MaxT = min(MaxT, MaxTY);
+    
+    float MinTZ = (Min.z - Ro.z) * InvRd.z;
+    float MaxTZ = (Max.z - Ro.z) * InvRd.z;
+    
+    if (MinTZ > MaxTZ)
+    {
+        float Temp = MaxTZ;
+        MaxTZ = MinTZ;
+        MinTZ = Temp;
+    }
+    
+    if (MinTZ > MaxT || MaxTZ < MinT) return false;
+    
+    return true;
+}
+
 contact_info Raytrace(in vec3 Ro, in vec3 Rd)
 {
     contact_info Res;
@@ -163,6 +222,59 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
         }
     }
     
+#if 1
+    
+    int ToVisitOffset = 0;
+    int NodesToVisit[32];
+    int CurrIndex = 0;
+    
+    int TriTestCount = 0;
+    
+    while (true)
+    {
+        if (IntersectBound(Ro, Rd, BvhEntries[CurrIndex].Min, 
+                           BvhEntries[CurrIndex].Max))
+        {
+            if (BvhEntries[CurrIndex].PrimitiveCount == -1)
+            {
+                NodesToVisit[ToVisitOffset++] = BvhEntries[CurrIndex].Offset;
+                CurrIndex += 1;
+            }
+            else
+            {
+                int StartOffset = BvhEntries[CurrIndex].Offset;
+                int EndOffset = (StartOffset + 
+                                 BvhEntries[CurrIndex].PrimitiveCount);
+                for (int TriIndex = StartOffset; 
+                     TriIndex < EndOffset; 
+                     ++TriIndex)
+                {
+                    TriTestCount += 1;
+                    
+                    float T = RayIntersectTriangle(Ro, Rd, 
+                                                   Triangles[TriIndex].A,
+                                                   Triangles[TriIndex].B,
+                                                   Triangles[TriIndex].C);
+                    if (T > T_MIN && T < Res.T)
+                    {
+                        Res.T = T;
+                        Res.Albedo = Triangles[TriIndex].Albedo;
+                        Res.N = Triangles[TriIndex].N;
+                    }
+                }
+                
+                if (ToVisitOffset == 0) break;
+                CurrIndex = NodesToVisit[--ToVisitOffset];
+            }
+        }
+        else
+        {
+            if (ToVisitOffset == 0) break;
+            CurrIndex = NodesToVisit[--ToVisitOffset];
+        }
+    }
+    
+#else
     for (int TriIndex = 0; TriIndex < TriangleCount; ++TriIndex)
     {
         float T = RayIntersectTriangle(Ro, Rd, 
@@ -174,14 +286,13 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
             Res.T = T;
             Res.Albedo = Triangles[TriIndex].Albedo;
             Res.N = Triangles[TriIndex].N;
-#if 0
             if (dot(Res.N, Rd) > 0.0)
             {
                 Res.N = -Res.N;
             }
-#endif
         }
     }
+#endif
     
     return Res;
 }
@@ -255,7 +366,7 @@ void main()
         vec3 Attenuation = vec3(1);
         vec3 EnvLight = vec3(0.3, 0.4, 0.5);
         vec3 L = normalize(vec3(0.5f, 0.4f, -0.5f));
-        vec3 SunRadiance = vec3(3.0);
+        vec3 SunRadiance = vec3(2.0);
         
         vec3 CurrRo = Ro;
         vec3 CurrRd = Rd;

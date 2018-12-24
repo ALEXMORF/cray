@@ -7,12 +7,24 @@
 
 /*TODO(chen):
 
-. Optimize with BVH
+. heatmap of tri test count
+. Figure out std430 layout by reading spec
+. SAH partitioning
+. debug view the BVH
+. Model level partitioning
 . imgui for controlling renderer (sampling rate, max bounce count)
+. Try hardware rasterization for first bounce of light rays
+. imgui for loading/unloading scenes
+. dynamically manipulate objects
+. simple denoise
 . Proper Sky model: http://blog.hvidtfeldts.net/index.php/2015/01/path-tracing-3d-fractals/
 . Filmic tonemapping
 . more advanced BRDF
 . Multisample progressive rendering
+. Allow textures
+. Allow foliage
+. Test on big scenes
+. Allow dynamic geometry updates
 
 */
 
@@ -27,7 +39,7 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height)
         u8 *RestOfMemory = (u8 *)Memory->Data + sizeof(cray);
         int RestOfMemorySize = Memory->Size - sizeof(cray);
         CRay->MainArena = InitMemoryArena(RestOfMemory, RestOfMemorySize);
-        GlobalTempArena = PushMemoryArena(&CRay->MainArena, MB(2));
+        GlobalTempArena = PushMemoryArena(&CRay->MainArena, MB(500));
         
         CRay->Rasterizer = InitGLRasterizer(Width, Height);
         CRay->Scene = InitScene();

@@ -12,6 +12,8 @@ InstantiateObjTemporarily(char *Path, mat4 XForm)
     return Model;
 }
 
+#include "cray_bvh.cpp"
+
 internal uploaded_data
 UploadGeometryToGPU()
 {
@@ -19,12 +21,18 @@ UploadGeometryToGPU()
     
     mat4 MonkeyXForm = Mat4Scale(0.5f) * Mat4RotateAroundY(Pi32) * Mat4Translate(0.0f, 0.6f, 0.0f);
     mat4 RoomXForm = Mat4RotateAroundY(Pi32) * Mat4Translate(0.0f, 0.0f, 4.0f);
+    mat4 TigerXForm = Mat4RotateAroundY(1.15f*Pi32) * Mat4Translate(0.0f, 0.3f, 0.0f);
+    mat4 MooseXForm = Mat4RotateAroundY(0.2f*Pi32) * Mat4Translate(1.0f, -0.02f, 0.0f);
+    mat4 BigMouthXForm = Mat4RotateAroundY(0.7f*Pi32) * Mat4Translate(-1.0f, 0.0f, 0.0f);
     
     int ModelCount = 0;
     obj_model Models[200] = {};
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/lowpoly_monkey", MonkeyXForm);
-    Models[ModelCount++] = InstantiateObjTemporarily("../data/light_room", RoomXForm);
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/ship", Mat4Translate(0.0f, 0.06f, 0.0f));
+    //Models[ModelCount++] = InstantiateObjTemporarily("../data/light_room", RoomXForm);
+    Models[ModelCount++] = InstantiateObjTemporarily("../data/monkey", MonkeyXForm);
+    //Models[ModelCount++] = InstantiateObjTemporarily("../data/tiger", TigerXForm);
+    //Models[ModelCount++] = InstantiateObjTemporarily("../data/moose", MooseXForm);
+    //Models[ModelCount++] = InstantiateObjTemporarily("../data/bigmouth", BigMouthXForm);
+    //Models[ModelCount++] = InstantiateObjTemporarily("../data/big_scene", Mat4Identity());
     
     //NOTE(chen): push into vertices
     int VertexCount = 0;
@@ -61,14 +69,28 @@ UploadGeometryToGPU()
         }
     }
     
+    linear_bvh BVH = ConstructLinearBVH(Triangles, 0, 
+                                        TriangleCount, 
+                                        &GlobalTempArena);
+    
     //NOTE(chen): upload triangles onto SSBO
-    GLuint SSBO = 0;
-    glGenBuffers(1, &SSBO);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO);
+    GLuint TriangleSSBO = 0;
+    glGenBuffers(1, &TriangleSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, TriangleSSBO);
     glBufferData(GL_SHADER_STORAGE_BUFFER, 
                  TriangleCount * sizeof(packed_triangle), 
                  Triangles, GL_STATIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, SSBO);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, TriangleSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); 
+    
+    //NOTE(chen): upload BVH onto SSBO
+    GLuint BvhSSBO = 0;
+    glGenBuffers(1, &BvhSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, BvhSSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 
+                 BVH.Count * sizeof(bvh_entry), 
+                 BVH.Data, GL_STATIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, BvhSSBO);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); 
     
     Uploaded.TriangleCount = TriangleCount;

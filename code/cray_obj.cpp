@@ -159,6 +159,20 @@ LoadObj(char *Path, memory_arena *Arena)
 {
     obj_model Result = {};
     
+    //NOTE(chen): check for cache
+    {
+        char ObjCachePath[255];
+        snprintf(ObjCachePath, sizeof(ObjCachePath), "%s.cache", Path);
+        
+        FILE *CacheFile = fopen(ObjCachePath, "rb");
+        if (CacheFile)
+        {
+            Result = LoadObjCache(CacheFile, &GlobalTempArena);
+            fclose(CacheFile);
+            return Result;
+        }
+    }
+    
     char MtlPath[255];
     snprintf(MtlPath, sizeof(MtlPath), "%s.mtl", Path);
     char ObjPath[255];
@@ -185,7 +199,7 @@ LoadObj(char *Path, memory_arena *Arena)
             sscanf(MtlFileWalker, "Kd %f %f %f", 
                    &NewMat.Albedo.X, &NewMat.Albedo.Y, &NewMat.Albedo.Z);
             
-            NewMat.Albedo = Square(NewMat.Albedo);
+            //NewMat.Albedo = Square(NewMat.Albedo);
             Mats[MatCount++] = NewMat;
         }
         

@@ -33,6 +33,7 @@ struct bvh_entry
     
     int Offset; //NOTE(chen): Offset of either second child or primitive
     int PrimitiveCount;
+    int Axis;
 };
 
 layout(std430, binding = 1) buffer BvhBuffer
@@ -146,7 +147,7 @@ float RayIntersectTriangle(in vec3 Ro, in vec3 Rd,
 }
 
 //TODO(chen): need to handle div by zero?
-bool IntersectBound(in vec3 Ro, in vec3 Rd, in vec3 Bound[2])
+float RayIntersectBound(in vec3 Ro, in vec3 Rd, in vec3 Bound[2])
 {
     vec3 InvRd = 1.0 / Rd;
     
@@ -174,7 +175,7 @@ bool IntersectBound(in vec3 Ro, in vec3 Rd, in vec3 Bound[2])
         MaxTY = (Bound[0].y - Ro.y) * InvRd.y;
     }
     
-    if (MinTY > MaxT || MaxTY < MinT) return false;
+    if (MinTY > MaxT || MaxTY < MinT) return T_MAX;
     
     MinT = max(MinT, MinTY);
     MaxT = min(MaxT, MaxTY);
@@ -190,9 +191,9 @@ bool IntersectBound(in vec3 Ro, in vec3 Rd, in vec3 Bound[2])
         MaxTZ = (Bound[0].z - Ro.z) * InvRd.z;
     }
     
-    if (MinTZ > MaxT || MaxTZ < MinT) return false;
+    if (MinTZ > MaxT || MaxTZ < MinT) return T_MAX;
     
-    return true;
+    return max(MinT, MinTZ);
 }
 
 contact_info Raytrace(in vec3 Ro, in vec3 Rd)
@@ -232,12 +233,21 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
     
     while (true)
     {
-        if (IntersectBound(Ro, Rd, BvhEntries[CurrIndex].Bound))
+        float BoundT = RayIntersectBound(Ro, Rd, BvhEntries[CurrIndex].Bound);
+        if (BoundT < Res.T && BoundT != T_MAX)
         {
             if (BvhEntries[CurrIndex].PrimitiveCount == -1)
             {
-                NodesToVisit[ToVisitOffset++] = BvhEntries[CurrIndex].Offset;
-                CurrIndex += 1;
+                if (Rd[BvhEntries[CurrIndex].Axis] >= 0.0)
+                {
+                    NodesToVisit[ToVisitOffset++] = BvhEntries[CurrIndex].Offset;
+                    CurrIndex = CurrIndex + 1;
+                }
+                else
+                {
+                    NodesToVisit[ToVisitOffset++] = CurrIndex + 1;
+                    CurrIndex = BvhEntries[CurrIndex].Offset;
+                }
             }
             else
             {
@@ -318,6 +328,13 @@ vec3 SampleCone(in vec3 N, in float Extent)
     return X + Y + N * sqrt(1.0 - Radius*Radius);
 }
 
+vec3 SampleEnvLight(in vec3 Rd)
+{
+    vec3 Zenith = vec3(0.0, 0.44, 3.66);
+    vec3 Azimuth = vec3(1.0, 1.4, 1.6);
+    return mix(Azimuth, Zenith, clamp(Rd.y, 0.0, 1.0));
+}
+
 void main()
 {
     InitScene();
@@ -341,9 +358,8 @@ void main()
         
         vec3 Radiance = vec3(0);
         vec3 Attenuation = vec3(1);
-        vec3 EnvLight = vec3(0.3, 0.4, 0.5);
         vec3 L = normalize(vec3(0.5f, 0.4f, -0.5f));
-        vec3 SunRadiance = vec3(2.0);
+        vec3 SunRadiance = vec3(4.0);
         
         vec3 CurrRo = Ro;
         vec3 CurrRd = Rd;
@@ -368,7 +384,7 @@ void main()
             }
             else
             {
-                Radiance += Attenuation * EnvLight;
+                Radiance += Attenuation * SampleEnvLight(Rd);
                 break;
             }
         }

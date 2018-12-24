@@ -34,6 +34,7 @@ struct bvh_node
     bound Bound;
     bvh_node *Left;
     bvh_node *Right;
+    axis PartitionAxis;
     int PrimitiveOffset;
     int PrimitiveCount; //NOTE(chen): set to -1 for intermediate node
 };
@@ -53,8 +54,9 @@ struct bvh_entry
         i32 SecondChildOffset;
     };
     i32 PrimitiveCount;
+    i32 Axis;
     
-    u32 Pad3[2];
+    u32 Pad3;
 };
 #pragma pack(pop)
 

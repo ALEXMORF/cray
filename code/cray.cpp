@@ -7,7 +7,6 @@
 
 /*TODO(chen):
 
-. Faster BVH traversal? 
 . debug view the BVH
 . Model level partitioning
 . imgui for controlling renderer (sampling rate, max bounce count)

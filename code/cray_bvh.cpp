@@ -172,11 +172,12 @@ ConstructBVH(primitive *Prims, int StartIndex, int Count, memory_arena *Arena)
     {
         TotalBound = Union(TotalBound, Prims[PrimIndex].Bound);
     }
-    ASSERT(TotalBound.IsValid);
     Node->Bound = TotalBound;
     
     if (Count > 5)
     {
+        ASSERT(TotalBound.IsValid);
+        
         bound CentroidBound = {};
         for (int PrimIndex = StartIndex; PrimIndex < StartIndex+Count; ++PrimIndex)
         {
@@ -219,6 +220,7 @@ ConstructBVH(primitive *Prims, int StartIndex, int Count, memory_arena *Arena)
         }
         
         Node->PrimitiveCount = -1;
+        Node->PartitionAxis = PartitionAxis;
         Node->Left = ConstructBVH(Prims, StartIndex, LeftCount, Arena);
         Node->Right = ConstructBVH(Prims, StartIndex+LeftCount, RightCount, Arena);
     }
@@ -251,6 +253,7 @@ Flatten(bvh_node *Node, bvh_entry *Array, int *Offset)
     
     if (Node->PrimitiveCount == -1)
     {
+        Array[CurrIndex].Axis = Node->PartitionAxis;
         Flatten(Node->Left, Array, Offset);
         Array[CurrIndex].SecondChildOffset = *Offset;
         Flatten(Node->Right, Array, Offset);

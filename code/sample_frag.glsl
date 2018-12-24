@@ -29,8 +29,7 @@ layout(std430, binding = 0) buffer TriBuffer
 
 struct bvh_entry
 {
-    vec3 Min;
-    vec3 Max;
+    vec3 Bound[2];
     
     int Offset; //NOTE(chen): Offset of either second child or primitive
     int PrimitiveCount;
@@ -147,28 +146,32 @@ float RayIntersectTriangle(in vec3 Ro, in vec3 Rd,
 }
 
 //TODO(chen): need to handle div by zero?
-bool IntersectBound(in vec3 Ro, in vec3 Rd, in vec3 Min, in vec3 Max)
+bool IntersectBound(in vec3 Ro, in vec3 Rd, in vec3 Bound[2])
 {
     vec3 InvRd = 1.0 / Rd;
     
-    float MinT = (Min.x - Ro.x) * InvRd.x;
-    float MaxT = (Max.x - Ro.x) * InvRd.x;
+    float MinT, MaxT, MinTY, MaxTY, MinTZ, MaxTZ;
     
-    if (MinT > MaxT)
+    if (InvRd.x >= 0.0)
     {
-        float Temp = MaxT;
-        MaxT = MinT;
-        MinT = Temp;
+        MinT = (Bound[0].x - Ro.x) * InvRd.x;
+        MaxT = (Bound[1].x - Ro.x) * InvRd.x;
+    }
+    else
+    {
+        MinT = (Bound[1].x - Ro.x) * InvRd.x;
+        MaxT = (Bound[0].x - Ro.x) * InvRd.x;
     }
     
-    float MinTY = (Min.y - Ro.y) * InvRd.y;
-    float MaxTY = (Max.y - Ro.y) * InvRd.y;
-    
-    if (MinTY > MaxTY)
+    if (InvRd.y >= 0.0)
     {
-        float Temp = MaxTY;
-        MaxTY = MinTY;
-        MinTY = Temp;
+        MinTY = (Bound[0].y - Ro.y) * InvRd.y;
+        MaxTY = (Bound[1].y - Ro.y) * InvRd.y;
+    }
+    else
+    {
+        MinTY = (Bound[1].y - Ro.y) * InvRd.y;
+        MaxTY = (Bound[0].y - Ro.y) * InvRd.y;
     }
     
     if (MinTY > MaxT || MaxTY < MinT) return false;
@@ -176,14 +179,15 @@ bool IntersectBound(in vec3 Ro, in vec3 Rd, in vec3 Min, in vec3 Max)
     MinT = max(MinT, MinTY);
     MaxT = min(MaxT, MaxTY);
     
-    float MinTZ = (Min.z - Ro.z) * InvRd.z;
-    float MaxTZ = (Max.z - Ro.z) * InvRd.z;
-    
-    if (MinTZ > MaxTZ)
+    if (InvRd.z >= 0.0)
     {
-        float Temp = MaxTZ;
-        MaxTZ = MinTZ;
-        MinTZ = Temp;
+        MinTZ = (Bound[0].z - Ro.z) * InvRd.z;
+        MaxTZ = (Bound[1].z - Ro.z) * InvRd.z;
+    }
+    else
+    {
+        MinTZ = (Bound[1].z - Ro.z) * InvRd.z;
+        MaxTZ = (Bound[0].z - Ro.z) * InvRd.z;
     }
     
     if (MinTZ > MaxT || MaxTZ < MinT) return false;
@@ -228,8 +232,7 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
     
     while (true)
     {
-        if (IntersectBound(Ro, Rd, BvhEntries[CurrIndex].Min, 
-                           BvhEntries[CurrIndex].Max))
+        if (IntersectBound(Ro, Rd, BvhEntries[CurrIndex].Bound))
         {
             if (BvhEntries[CurrIndex].PrimitiveCount == -1)
             {

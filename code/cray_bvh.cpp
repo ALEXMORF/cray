@@ -34,23 +34,31 @@ Union(bound A, bound B)
     return Bound;
 }
 
-int CompareTriangle(const void *DataA, const void *DataB)
+inline v3
+CalcTriangleCentroid(packed_triangle Triangle)
 {
-    packed_triangle A = *(packed_triangle *)DataA;
-    packed_triangle B = *(packed_triangle *)DataB;
+    v3 Centroid = {};
     
     f32 U = 0.3333f;
-    f32 V = 0.3333f;
-    v3 CentroidA = U * A.A + V * A.B + (1.0f - U - V) * A.C;
-    v3 CentroidB = U * B.A + V * B.B + (1.0f - U - V) * B.C;
+    f32 V = U;
     
-    if (CentroidA.Data[GlobalPartitionAxis] < 
-        CentroidB.Data[GlobalPartitionAxis])
+    Centroid = U * Triangle.A + V * Triangle.B + (1.0f - U - V) * Triangle.C;
+    
+    return Centroid;
+}
+
+int ComparePrimitive(const void *DataA, const void *DataB)
+{
+    primitive *A = (primitive *)DataA;
+    primitive *B = (primitive *)DataB;
+    
+    if (A->Centroid.Data[GlobalPartitionAxis] < 
+        B->Centroid.Data[GlobalPartitionAxis])
     {
         return -1;
     }
-    else if (CentroidA.Data[GlobalPartitionAxis] > 
-             CentroidB.Data[GlobalPartitionAxis])
+    else if (A->Centroid.Data[GlobalPartitionAxis] > 
+             B->Centroid.Data[GlobalPartitionAxis])
     {
         return 1;
     }
@@ -59,17 +67,15 @@ int CompareTriangle(const void *DataA, const void *DataB)
 }
 
 internal bvh_node *
-ConstructBVH(packed_triangle *Triangles, int StartIndex, int Count, 
-             memory_arena *Arena)
+ConstructBVH(primitive *Prims, int StartIndex, int Count, memory_arena *Arena)
 {
     bvh_node *Node = PushStruct(Arena, bvh_node);
     *Node = {};
     
     bound TotalBound = {};
-    for (int TriIndex = StartIndex; TriIndex < StartIndex+Count; ++TriIndex)
+    for (int PrimIndex = StartIndex; PrimIndex < StartIndex+Count; ++PrimIndex)
     {
-        bound TriBound = BoundTriangle(Triangles[TriIndex]);
-        TotalBound = Union(TotalBound, TriBound);
+        TotalBound = Union(TotalBound, Prims[PrimIndex].Bound);
     }
     ASSERT(TotalBound.IsValid);
     Node->Bound = TotalBound;
@@ -94,14 +100,14 @@ ConstructBVH(packed_triangle *Triangles, int StartIndex, int Count,
         }
         
         GlobalPartitionAxis = PartitionAxis;
-        qsort(Triangles+StartIndex, Count, sizeof(packed_triangle), CompareTriangle);
+        qsort(Prims+StartIndex, Count, sizeof(primitive), ComparePrimitive);
         
         int LeftCount = Count / 2;
         int RightCount = Count - LeftCount;
         
         Node->PrimitiveCount = -1;
-        Node->Left = ConstructBVH(Triangles, StartIndex, LeftCount, Arena);
-        Node->Right = ConstructBVH(Triangles, StartIndex+LeftCount, RightCount, Arena);
+        Node->Left = ConstructBVH(Prims, StartIndex, LeftCount, Arena);
+        Node->Right = ConstructBVH(Prims, StartIndex+LeftCount, RightCount, Arena);
     }
     else
     {
@@ -127,8 +133,8 @@ Flatten(bvh_node *Node, bvh_entry *Array, int *Offset)
     int CurrIndex = *Offset;
     *Offset = *Offset + 1;
     Array[CurrIndex].PrimitiveCount = Node->PrimitiveCount;
-    Array[CurrIndex].Min = Node->Bound.Min;
-    Array[CurrIndex].Max = Node->Bound.Max;
+    Array[CurrIndex].BoundMin = Node->Bound.Min;
+    Array[CurrIndex].BoundMax = Node->Bound.Max;
     
     if (Node->PrimitiveCount == -1)
     {
@@ -143,18 +149,38 @@ Flatten(bvh_node *Node, bvh_entry *Array, int *Offset)
 }
 
 internal linear_bvh
-ConstructLinearBVH(packed_triangle *Triangles, int StartIndex, 
-                   int Count, memory_arena *Arena)
+ConstructLinearBVH(packed_triangle *Triangles, int Count, memory_arena *Arena)
 {
     linear_bvh Result = {};
     
-    bvh_node *Root = ConstructBVH(Triangles, StartIndex, 
-                                  Count, &GlobalTempArena);
+    //NOTE(chen): construct BVH
+    primitive *Prims = PushTempArray(Count, primitive);
+    for (int PrimIndex = 0; PrimIndex < Count; ++PrimIndex)
+    {
+        primitive *Prim = Prims + PrimIndex;
+        Prim->TriIndex = PrimIndex;
+        Prim->Bound = BoundTriangle(Triangles[PrimIndex]);
+        Prim->Centroid = CalcTriangleCentroid(Triangles[PrimIndex]);
+    }
+    bvh_node *Root = ConstructBVH(Prims, 0, Count, &GlobalTempArena);
+    
+    //NOTE(chen): flatten BVH
     Result.Count = CountNodes(Root);
     Result.Data = PushArray(Arena, Result.Count, bvh_entry);
-    
     int Offset = 0;
     Flatten(Root, Result.Data, &Offset);
+    
+    //NOTE(chen): resort triangles to match order of primitives
+    packed_triangle *SortedTriangles = PushTempArray(Count, packed_triangle);
+    for (int PrimIndex = 0; PrimIndex < Count; ++PrimIndex)
+    {
+        int SortedIndex = Prims[PrimIndex].TriIndex;
+        SortedTriangles[PrimIndex] = Triangles[SortedIndex];
+    }
+    for (int TriIndex = 0; TriIndex < Count; ++TriIndex)
+    {
+        Triangles[TriIndex] = SortedTriangles[TriIndex];
+    }
     
     return Result;
 }

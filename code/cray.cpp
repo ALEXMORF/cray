@@ -7,14 +7,16 @@
 
 /*TODO(chen):
 
-. Figure out std430 layout by reading spec
-. Faster ray vs bound test?
+. Pick axis based on centroid projection instead of dimensions
 . SAH partitioning
 . Faster BVH traversal? 
 . debug view the BVH
 . Model level partitioning
 . imgui for controlling renderer (sampling rate, max bounce count)
+. imgui for profiling (speed for everything)
 . Try hardware rasterization for first bounce of light rays
+. Kd-tree partition for static scenes
+. environment map
 . imgui for loading/unloading scenes
 . dynamically manipulate objects
 . simple denoise

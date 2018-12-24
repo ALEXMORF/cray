@@ -16,6 +16,13 @@ struct bound
     b32 IsValid;
 };
 
+struct primitive
+{
+    int TriIndex;
+    bound Bound;
+    v3 Centroid;
+};
+
 struct bvh_node
 {
     bound Bound;
@@ -29,9 +36,10 @@ struct bvh_node
 struct bvh_entry
 {
     //NOTE(chen): bound
-    v3 Min;
+    v3 BoundMin;
     u32 Pad1;
-    v3 Max;
+    v3 BoundMax;
+    u32 Pad2;
     
     union
     {
@@ -40,7 +48,7 @@ struct bvh_entry
     };
     i32 PrimitiveCount;
     
-    u32 Pad2[3];
+    u32 Pad3[2];
 };
 #pragma pack(pop)
 

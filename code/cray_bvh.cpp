@@ -34,6 +34,26 @@ Union(bound A, bound B)
     return Bound;
 }
 
+inline bound
+Union(bound A, v3 P)
+{
+    bound Bound = {};
+    
+    if (!A.IsValid)
+    {
+        Bound.Min = P;
+        Bound.Max = P;
+    }
+    else
+    {
+        Bound.Min = Min(A.Min, P);
+        Bound.Max = Max(A.Max, P);
+    }
+    
+    Bound.IsValid = true;
+    return Bound;
+}
+
 inline v3
 CalcTriangleCentroid(packed_triangle Triangle)
 {
@@ -82,20 +102,26 @@ ConstructBVH(primitive *Prims, int StartIndex, int Count, memory_arena *Arena)
     
     if (Count > 5)
     {
-        f32 DimX = TotalBound.Max.X - TotalBound.Min.X;
-        f32 DimY = TotalBound.Max.Y - TotalBound.Min.Y;
-        f32 DimZ = TotalBound.Max.Z - TotalBound.Min.Z;
-        
-        f32 MaxDim = DimX;
-        axis PartitionAxis = AXIS_X;
-        if (DimY > MaxDim) 
+        bound CentroidBound = {};
+        for (int PrimIndex = StartIndex; PrimIndex < StartIndex+Count; ++PrimIndex)
         {
-            MaxDim = DimY;
+            CentroidBound = Union(CentroidBound, Prims[PrimIndex].Centroid);
+        }
+        
+        f32 DistX = CentroidBound.Max.X - CentroidBound.Min.X;
+        f32 DistY = CentroidBound.Max.Y - CentroidBound.Min.Y;
+        f32 DistZ = CentroidBound.Max.Z - CentroidBound.Min.Z;
+        
+        f32 MaxDist = DistX;
+        axis PartitionAxis = AXIS_X;
+        if (DistY > MaxDist) 
+        {
+            MaxDist = DistY;
             PartitionAxis = AXIS_Y;
         }
-        if (DimZ > MaxDim) 
+        if (DistZ > MaxDist) 
         {
-            MaxDim = DimZ;
+            MaxDist = DistZ;
             PartitionAxis = AXIS_Z;
         }
         

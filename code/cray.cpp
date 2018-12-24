@@ -7,7 +7,6 @@
 
 /*TODO(chen):
 
-. Pick axis based on centroid projection instead of dimensions
 . SAH partitioning
 . Faster BVH traversal? 
 . debug view the BVH

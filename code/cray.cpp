@@ -7,7 +7,6 @@
 
 /*TODO(chen):
 
-. heatmap of tri test count
 . Figure out std430 layout by reading spec
 . SAH partitioning
 . debug view the BVH

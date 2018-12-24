@@ -222,13 +222,9 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
         }
     }
     
-#if 1
-    
     int ToVisitOffset = 0;
     int NodesToVisit[32];
     int CurrIndex = 0;
-    
-    int TriTestCount = 0;
     
     while (true)
     {
@@ -249,8 +245,6 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
                      TriIndex < EndOffset; 
                      ++TriIndex)
                 {
-                    TriTestCount += 1;
-                    
                     float T = RayIntersectTriangle(Ro, Rd, 
                                                    Triangles[TriIndex].A,
                                                    Triangles[TriIndex].B,
@@ -273,26 +267,6 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
             CurrIndex = NodesToVisit[--ToVisitOffset];
         }
     }
-    
-#else
-    for (int TriIndex = 0; TriIndex < TriangleCount; ++TriIndex)
-    {
-        float T = RayIntersectTriangle(Ro, Rd, 
-                                       Triangles[TriIndex].A,
-                                       Triangles[TriIndex].B,
-                                       Triangles[TriIndex].C);
-        if (T > T_MIN && T < Res.T)
-        {
-            Res.T = T;
-            Res.Albedo = Triangles[TriIndex].Albedo;
-            Res.N = Triangles[TriIndex].N;
-            if (dot(Res.N, Rd) > 0.0)
-            {
-                Res.N = -Res.N;
-            }
-        }
-    }
-#endif
     
     return Res;
 }

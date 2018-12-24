@@ -8,7 +8,9 @@
 /*TODO(chen):
 
 . Figure out std430 layout by reading spec
+. Faster ray vs bound test?
 . SAH partitioning
+. Faster BVH traversal? 
 . debug view the BVH
 . Model level partitioning
 . imgui for controlling renderer (sampling rate, max bounce count)

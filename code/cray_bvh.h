@@ -23,6 +23,12 @@ struct primitive
     v3 Centroid;
 };
 
+struct bucket
+{
+    bound Bound;
+    int PrimCount;
+};
+
 struct bvh_node
 {
     bound Bound;

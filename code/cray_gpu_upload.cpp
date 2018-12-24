@@ -29,8 +29,8 @@ UploadGeometryToGPU()
     
     int ModelCount = 0;
     obj_model Models[200] = {};
-    Models[ModelCount++] = InstantiateObjTemporarily("../data/bunny", BunnyXForm);
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/monkey", MonkeyXForm);
+    //Models[ModelCount++] = InstantiateObjTemporarily("../data/bunny", BunnyXForm);
+    Models[ModelCount++] = InstantiateObjTemporarily("../data/monkey", MonkeyXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/sphinx", SphinxXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/light_room", RoomXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/tiger", TigerXForm);

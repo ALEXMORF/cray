@@ -12,6 +12,18 @@ BoundTriangle(packed_triangle Triangle)
     return Bound;
 }
 
+inline f32
+CalcSurfaceArea(bound Bound)
+{
+    v3 Dim = Bound.Max - Bound.Min;
+    
+    f32 TopFaces = 2.0f * Dim.X * Dim.Z;
+    f32 SideFaces = 2.0f * Dim.Y * Dim.Z;
+    f32 FrontBackFaces = 2.0f * Dim.X * Dim.Y;
+    
+    return TopFaces + SideFaces + FrontBackFaces;
+}
+
 inline bound
 Union(bound A, bound B)
 {
@@ -86,6 +98,69 @@ int ComparePrimitive(const void *DataA, const void *DataB)
     return 0;
 }
 
+internal int
+PartitionLeftSAH(primitive *Prims, int StartIndex, int Count, 
+                 axis Axis, f32 MinCentroid, f32 MaxCentroid, 
+                 bound TotalBound)
+{
+    bucket Buckets[12] = {};
+    int BucketCount = ARRAY_COUNT(Buckets);
+    f32 BucketInterval = (MaxCentroid - MinCentroid) / (f32)BucketCount;
+    
+    for (int PrimIndex = StartIndex; PrimIndex < StartIndex+Count; ++PrimIndex)
+    {
+        f32 Centroid = Prims[PrimIndex].Centroid.Data[Axis];
+        int OwnerBucketIndex = (int)((Centroid - MinCentroid) / BucketInterval);
+        if (OwnerBucketIndex == BucketCount) 
+        {
+            OwnerBucketIndex = BucketCount - 1;
+        }
+        ASSERT(OwnerBucketIndex >= 0 && OwnerBucketIndex < BucketCount);
+        
+        Buckets[OwnerBucketIndex].PrimCount += 1;
+        Buckets[OwnerBucketIndex].Bound = Union(Buckets[OwnerBucketIndex].Bound, Prims[PrimIndex].Bound);
+    }
+    
+    int MinCostLeftPrimCount = -1;
+    f32 MinCost = 10e31;
+    for (int CutIndex = 0; CutIndex < BucketCount-1; ++CutIndex)
+    {
+        int LeftBucketCount = CutIndex + 1;
+        int RightBucketCount = BucketCount - LeftBucketCount;
+        
+        bound LeftBound = {};
+        int LeftPrimCount = 0;
+        for (int BucketIndex = 0; BucketIndex < LeftBucketCount; ++BucketIndex)
+        {
+            LeftBound = Union(LeftBound, Buckets[BucketIndex].Bound);
+            LeftPrimCount += Buckets[BucketIndex].PrimCount;
+        }
+        
+        bound RightBound = {};
+        int RightPrimCount = 0;
+        for (int BucketIndex = 0; BucketIndex < RightBucketCount; ++BucketIndex)
+        {
+            RightBound = Union(RightBound, Buckets[BucketIndex].Bound);
+            RightPrimCount += Buckets[BucketIndex].PrimCount;
+        }
+        
+        f32 TotalBoundSurfaceArea = CalcSurfaceArea(TotalBound);
+        f32 HitLeftProbability = CalcSurfaceArea(LeftBound)/ TotalBoundSurfaceArea;
+        f32 HitRightProbability = CalcSurfaceArea(RightBound) / TotalBoundSurfaceArea;
+        
+        f32 CutCost = 0.125f + (f32)LeftPrimCount * HitLeftProbability + (f32)RightPrimCount * HitRightProbability;
+        
+        if (CutCost < MinCost)
+        {
+            MinCost = CutCost;
+            MinCostLeftPrimCount = LeftPrimCount;
+        }
+    }
+    ASSERT(MinCostLeftPrimCount != -1);
+    
+    return MinCostLeftPrimCount;
+}
+
 internal bvh_node *
 ConstructBVH(primitive *Prims, int StartIndex, int Count, memory_arena *Arena)
 {
@@ -108,28 +183,40 @@ ConstructBVH(primitive *Prims, int StartIndex, int Count, memory_arena *Arena)
             CentroidBound = Union(CentroidBound, Prims[PrimIndex].Centroid);
         }
         
-        f32 DistX = CentroidBound.Max.X - CentroidBound.Min.X;
-        f32 DistY = CentroidBound.Max.Y - CentroidBound.Min.Y;
-        f32 DistZ = CentroidBound.Max.Z - CentroidBound.Min.Z;
+        f32 RangeX = CentroidBound.Max.X - CentroidBound.Min.X;
+        f32 RangeY = CentroidBound.Max.Y - CentroidBound.Min.Y;
+        f32 RangeZ = CentroidBound.Max.Z - CentroidBound.Min.Z;
         
-        f32 MaxDist = DistX;
+        f32 MaxRange = RangeX;
         axis PartitionAxis = AXIS_X;
-        if (DistY > MaxDist) 
+        if (RangeY > MaxRange) 
         {
-            MaxDist = DistY;
+            MaxRange = RangeY;
             PartitionAxis = AXIS_Y;
         }
-        if (DistZ > MaxDist) 
+        if (RangeZ > MaxRange) 
         {
-            MaxDist = DistZ;
+            MaxRange = RangeZ;
             PartitionAxis = AXIS_Z;
         }
         
         GlobalPartitionAxis = PartitionAxis;
         qsort(Prims+StartIndex, Count, sizeof(primitive), ComparePrimitive);
         
-        int LeftCount = Count / 2;
+        int LeftCount = PartitionLeftSAH(Prims, StartIndex, Count, 
+                                         PartitionAxis, 
+                                         CentroidBound.Min.Data[PartitionAxis],
+                                         CentroidBound.Max.Data[PartitionAxis],
+                                         TotalBound);
         int RightCount = Count - LeftCount;
+        
+        //NOTE(chen): can't cut anymore, fallback to equal cut
+        if (LeftCount == Count || RightCount == Count)
+        {
+            ASSERT(!"shiz");
+            LeftCount = Count / 2;
+            RightCount = Count - LeftCount;
+        }
         
         Node->PrimitiveCount = -1;
         Node->Left = ConstructBVH(Prims, StartIndex, LeftCount, Arena);

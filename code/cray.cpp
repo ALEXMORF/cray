@@ -7,7 +7,6 @@
 
 /*TODO(chen):
 
-. SAH partitioning
 . Faster BVH traversal? 
 . debug view the BVH
 . Model level partitioning

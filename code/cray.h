@@ -9,7 +9,7 @@
 struct app_memory
 {
     void *Data;
-    int Size;
+    u64 Size;
     
     b32 IsInitialized;
 };

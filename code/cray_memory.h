@@ -3,8 +3,8 @@
 struct memory_arena
 {
     u8 *Base;
-    int Used;
-    int Size;
+    u64 Used;
+    u64 Size;
 }; 
 
 global_variable memory_arena GlobalTempArena;

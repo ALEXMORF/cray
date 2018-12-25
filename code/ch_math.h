@@ -1169,8 +1169,8 @@ Mat4Perspective(f32 FOV, f32 AspectRatio, f32 ZNear, f32 ZFar)
     
     f32 HFOV = FOV / 2.0f;
     
-    Result.Data[0][0] = 1.0f / (tanf(DegreeToRadian(HFOV)) * AspectRatio);
-    Result.Data[1][1] = 1.0f / tanf(DegreeToRadian(HFOV));
+    Result.Data[0][0] = 1.0f / (tanf(HFOV) * AspectRatio);
+    Result.Data[1][1] = 1.0f / tanf(HFOV);
     Result.Data[2][3] = 1.0f;
     Result.Data[2][2] = (ZFar + ZNear) / (ZFar - ZNear);
     Result.Data[3][2] = -(2.0f *ZFar*ZNear) / (ZFar - ZNear);

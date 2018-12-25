@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define sscanf DUMB_FUCKING_GARBAGE
+
 internal char *
 ReadFileTemporarily(char *FilePath)
 {
@@ -154,6 +156,156 @@ LoadObjCache(FILE *File, memory_arena *Arena)
     return Result;
 }
 
+inline char *
+SkipSpaces(char *Cursor)
+{
+    char *EndCursor = Cursor;
+    
+    while (*EndCursor == ' ')
+    {
+        EndCursor += 1;
+    }
+    
+    return EndCursor;
+}
+
+#define EXPECT_STR(Cursor, S) \
+if (!StartsWith(Cursor, S)) \
+{ \
+    return false; \
+} \
+Cursor += Length(S); \
+
+#define EXPECT_CHAR(Cursor, C) \
+if (*Cursor != C) \
+{ \
+    return false; \
+} \
+Cursor += 1; \
+
+inline b32
+ParseString(char *Cursor, char *Prefix, char *Buffer_Out)
+{
+    Cursor = SkipSpaces(Cursor);
+    
+    EXPECT_STR(Cursor, Prefix);
+    
+    Cursor = SkipSpaces(Cursor);
+    
+    int BufferIndex = 0;
+    while (*Cursor != '\n')
+    {
+        Buffer_Out[BufferIndex++] = *Cursor++;
+    }
+    
+    return true;
+}
+
+inline char *
+ReadFloat(char *Str, f32 *Float_Out)
+{
+    char *Cursor = Str;
+    Cursor = SkipSpaces(Cursor);
+    
+    f32 Sign = 1.0f;
+    if (*Cursor == '-')
+    {
+        Sign = -1.0f;
+        Cursor += 1;
+    }
+    
+    int WholeNum = 0;
+    f32 DeciNum = 0.0f;
+    
+    while (*Cursor >= '0' && *Cursor <= '9')
+    {
+        int Digit = *Cursor++ - '0';
+        WholeNum = 10 * WholeNum + Digit;
+    }
+    
+    if (*Cursor == '.')
+    {
+        Cursor += 1;
+        
+        f32 Weight = 0.1f;
+        while (*Cursor >= '0' && *Cursor <= '9')
+        {
+            int Digit = *Cursor++ - '0';
+            DeciNum += Weight * (f32)Digit;
+            Weight *= 0.1;
+        }
+    }
+    
+    *Float_Out = Sign * ((f32)WholeNum + DeciNum);
+    return Cursor;
+}
+
+inline char *
+ReadInteger(char *Str, i32 *Integer_Out)
+{
+    char *Cursor = Str;
+    Cursor = SkipSpaces(Cursor);
+    
+    int Sign = 1;
+    if (*Cursor == '-')
+    {
+        Sign = -1;
+        Cursor += 1;
+    }
+    
+    int Integer = 0;
+    while (*Cursor >= '0' && *Cursor <= '9')
+    {
+        int Digit = *Cursor++ - '0';
+        Integer = Integer * 10 + Digit;
+    }
+    
+    *Integer_Out = Integer;
+    return Cursor;
+}
+
+inline b32
+ParseV3(char *Cursor, char *Prefix, v3 *V_Out)
+{
+    Cursor = SkipSpaces(Cursor);
+    EXPECT_STR(Cursor, Prefix);
+    Cursor = SkipSpaces(Cursor);
+    
+    for (int I = 0; I < 3; ++I)
+    {
+        Cursor = ReadFloat(Cursor, V_Out->Data + I);
+    }
+    
+    return true;
+}
+
+inline b32 
+ParseFaceWithTexCoord(char *Cursor, int *VertexIndices, int *NormalIndices)
+{
+    Cursor = SkipSpaces(Cursor);
+    EXPECT_CHAR(Cursor, 'f');
+    
+    for (int PointIndex = 0; PointIndex < 3; ++PointIndex)
+    {
+        Cursor = SkipSpaces(Cursor);
+        
+        int VertexIndex, TexIndex, NormalIndex;
+        Cursor = ReadInteger(Cursor, &VertexIndex);
+        EXPECT_CHAR(Cursor, '/');
+        Cursor = ReadInteger(Cursor, &TexIndex);
+        EXPECT_CHAR(Cursor, '/');
+        Cursor = ReadInteger(Cursor, &NormalIndex);
+        
+        VertexIndices[PointIndex] = VertexIndex;
+        NormalIndices[PointIndex] = NormalIndex;
+    }
+    
+    return true;
+}
+
+#undef EXPECT_STR
+#undef EXPECT_CHAR
+
 internal obj_model
 LoadObj(char *Path, memory_arena *Arena)
 {
@@ -169,7 +321,11 @@ LoadObj(char *Path, memory_arena *Arena)
         {
             Result = LoadObjCache(CacheFile, &GlobalTempArena);
             fclose(CacheFile);
-            return Result;
+            
+            if (Result.VertexCount != 0)
+            {
+                return Result;
+            }
         }
     }
     
@@ -182,27 +338,29 @@ LoadObj(char *Path, memory_arena *Arena)
     int MatCount = 0;
     
     char *MtlFileContent = ReadFileTemporarily(MtlPath);
-    ASSERT(MtlFileContent);
-    char *MtlFileWalker = MtlFileContent;
-    
-    while (*MtlFileWalker)
+    if (MtlFileContent)
     {
-        if (StartsWith(MtlFileWalker, "newmtl"))
-        {
-            material NewMat = {};
-            sscanf(MtlFileWalker, "newmtl %s", NewMat.Name);
-            
-            while (!StartsWith(MtlFileWalker, "Kd"))
-            {
-                MtlFileWalker = GotoNextLine(MtlFileWalker);
-            }
-            sscanf(MtlFileWalker, "Kd %f %f %f", 
-                   &NewMat.Albedo.X, &NewMat.Albedo.Y, &NewMat.Albedo.Z);
-            
-            Mats[MatCount++] = NewMat;
-        }
+        char *MtlFileWalker = MtlFileContent;
         
-        MtlFileWalker = GotoNextLine(MtlFileWalker);
+        while (*MtlFileWalker)
+        {
+            if (StartsWith(MtlFileWalker, "newmtl"))
+            {
+                material NewMat = {};
+                ParseString(MtlFileWalker, "newmtl", NewMat.Name);
+                
+                while (!StartsWith(MtlFileWalker, "Kd"))
+                {
+                    MtlFileWalker = GotoNextLine(MtlFileWalker);
+                }
+                
+                ParseV3(MtlFileWalker, "Kd", &NewMat.Albedo);
+                
+                Mats[MatCount++] = NewMat;
+            }
+            
+            MtlFileWalker = GotoNextLine(MtlFileWalker);
+        }
     }
     
     char *ObjFileContent = ReadFileTemporarily(ObjPath);
@@ -246,37 +404,22 @@ LoadObj(char *Path, memory_arena *Arena)
         if (StartsWith(ObjFileWalker, "v"))
         {
             v3 Vertex = {};
-            sscanf(ObjFileWalker, "v %f %f %f", 
-                   &Vertex.X, &Vertex.Y, &Vertex.Z);
+            ParseV3(ObjFileWalker, "v", &Vertex);
             TempVertices[TempVertexCursor++] = Vertex;
         }
         if (StartsWith(ObjFileWalker, "vn"))
         {
             v3 Normal = {};
-            sscanf(ObjFileWalker, "vn %f %f %f", 
-                   &Normal.X, &Normal.Y, &Normal.Z);
+            ParseV3(ObjFileWalker, "vn", &Normal);
             TempNormals[TempNormalCursor++] = Normal;
         }
         if (StartsWith(ObjFileWalker, "f"))
         {
-            int Garbage[3] = {};
             int VertexIndices[3] = {};
             int NormalIndices[3] = {};
             
-            int ArgumentsParsed = sscanf(ObjFileWalker, 
-                                         "f %d/%d/%d %d/%d/%d %d/%d/%d",
-                                         VertexIndices, Garbage, NormalIndices,
-                                         VertexIndices+1, Garbage+1, NormalIndices+1,
-                                         VertexIndices+2, Garbage+2, NormalIndices+2);
-            
-            if (ArgumentsParsed != 9)
-            {
-                ArgumentsParsed = sscanf(ObjFileWalker, 
-                                         "f %d//%d %d//%d %d//%d",
-                                         VertexIndices, NormalIndices,
-                                         VertexIndices+1, NormalIndices+1,
-                                         VertexIndices+2, NormalIndices+2);
-            }
+            b32 ParsedFace = ParseFaceWithTexCoord(ObjFileWalker, VertexIndices, NormalIndices);
+            ASSERT(ParsedFace);
             
             for (int VI = 0; VI < 3; ++VI)
             {
@@ -284,17 +427,26 @@ LoadObj(char *Path, memory_arena *Arena)
                 VertexIndices[VI] -= 1;
                 NormalIndices[VI] -= 1;
                 
-                ASSERT(CurrentMatIndex != -1);
                 Result.Vertices[VertexCursor].P = TempVertices[VertexIndices[VI]];
                 Result.Vertices[VertexCursor].N = TempNormals[NormalIndices[VI]];
-                Result.Vertices[VertexCursor].Albedo = Mats[CurrentMatIndex].Albedo;
+                
+                if (CurrentMatIndex != -1)
+                {
+                    Result.Vertices[VertexCursor].Albedo = Mats[CurrentMatIndex].Albedo;
+                }
+                else
+                {
+                    //NOTE(chen): default color
+                    Result.Vertices[VertexCursor].Albedo = V3(0.64f);
+                }
+                
                 VertexCursor += 1;
             }
         }
         else if (StartsWith(ObjFileWalker, "usemtl"))
         {
             char MtlName[255];
-            sscanf(ObjFileWalker, "usemtl %s", MtlName);
+            ParseString(ObjFileWalker, "usemtl", MtlName);
             
             int NewMatIndex = -1;
             for (int MatIndex = 0; MatIndex < MatCount; ++MatIndex)

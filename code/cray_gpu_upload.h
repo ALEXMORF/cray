@@ -16,10 +16,23 @@ struct packed_triangle
 };
 #pragma pack(pop)
 
+struct vertices
+{
+    vertex *Data;
+    int Count;
+};
+
+struct triangles
+{
+    packed_triangle *Data;
+    int Count;
+};
+
 #include "cray_bvh.h"
 
 struct uploaded_data
 {
-    int TriangleCount;
-    int BvhEntryCount;
+    GLuint GeometryVAO;
+    u64 TriangleCount;
+    u64 BvhEntryCount;
 };

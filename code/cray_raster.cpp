@@ -5,6 +5,12 @@ PushUniformI32(gl_rasterizer *Rasterizer, char *Name, int Value)
 }
 
 inline void
+PushUniformF32(gl_rasterizer *Rasterizer, char *Name, f32 Value)
+{
+    glUniform1f(glGetUniformLocation(Rasterizer->CurrentShader, Name), Value);
+}
+
+inline void
 PushUniformV3(gl_rasterizer *Rasterizer, char *Name, v3 Vector)
 {
     glUniform3f(glGetUniformLocation(Rasterizer->CurrentShader, Name), 
@@ -12,9 +18,10 @@ PushUniformV3(gl_rasterizer *Rasterizer, char *Name, v3 Vector)
 }
 
 inline void
-PushUniformF32(gl_rasterizer *Rasterizer, char *Name, f32 Value)
+PushUniformMat4(gl_rasterizer *Rasterizer, char *Name, mat4 Mat)
 {
-    glUniform1f(glGetUniformLocation(Rasterizer->CurrentShader, Name), Value);
+    glUniformMatrix4fv(glGetUniformLocation(Rasterizer->CurrentShader, Name), 
+                       16, GL_TRUE, (f32 *)Mat.Data);
 }
 
 internal GLuint
@@ -151,21 +158,22 @@ UseShader(gl_rasterizer *Rasterizer, GLuint Shader)
 }
 
 internal gl_rasterizer
-InitGLRasterizer(int Width, int Height)
+InitRasterizer(int Width, int Height)
 {
     gl_rasterizer Rasterizer = {};
-    Rasterizer.SampleShader = CompileShaderProgram("../code/vert.glsl", "../code/sample_frag.glsl");
-    Rasterizer.BlitShader = CompileShaderProgram("../code/vert.glsl", "../code/blit_frag.glsl");
+    Rasterizer.SampleShader = CompileShaderProgram("../code/fullscreen_vert.glsl", "../code/sample_frag.glsl");
+    Rasterizer.BlitShader = CompileShaderProgram("../code/fullscreen_vert.glsl", "../code/blit_frag.glsl");
     Rasterizer.QuadVAO = MakeQuadVAO();
     Rasterizer.BackBuffer = InitFramebuffer(Width, Height);
     
+    Rasterizer.FOV = DegreeToRadian(45.0f);
     Rasterizer.Width = Width;
     Rasterizer.Height = Height;
     Rasterizer.LastBufferIndex = 0;
     Rasterizer.BufferIndex = 1;
     
     Rasterizer.SamplePerPixel = 1;
-    Rasterizer.MaxBounceCount = 1;
+    Rasterizer.MaxBounceCount = 2;
     
     return Rasterizer;
 }
@@ -201,19 +209,28 @@ PrepareForRasterization(gl_rasterizer *Rasterizer, int Width, int Height)
 }
 
 internal void
-Rasterize(gl_rasterizer *Rasterizer)
+Rasterize(gl_rasterizer *Rasterizer, GLuint GeometryVAO, mat4 View)
 {
     glBindFramebuffer(GL_FRAMEBUFFER, Rasterizer->BackBuffer.Handle);
     glDrawBuffer(GL_COLOR_ATTACHMENT0 + Rasterizer->BufferIndex);
     
+    f32 AspectRatio = (f32)Rasterizer->Width / (f32)Rasterizer->Height;
+    PushUniformF32(Rasterizer, "AspectRatio", AspectRatio);
+    PushUniformF32(Rasterizer, "FOV", Rasterizer->FOV);
     PushUniformI32(Rasterizer, "SamplePerPixel", Rasterizer->SamplePerPixel);
     PushUniformI32(Rasterizer, "MaxBounceCount", Rasterizer->MaxBounceCount);
+    
+    PushUniformMat4(Rasterizer, "View", View);
+    mat4 Projection = Mat4Perspective(Rasterizer->FOV, AspectRatio, 0.1f, 1000.0f);
+    PushUniformMat4(Rasterizer, "Projection", Projection);
     
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, Rasterizer->BackBuffer.TexHandles[Rasterizer->LastBufferIndex]);
     PushUniformI32(Rasterizer, "PrevSamplesTex", 0);
     PushUniformI32(Rasterizer, "SampleCountSoFar", Rasterizer->SampleCountSoFar);
     
+    //TODO(chen): pre-z test 
+    //TODO(chen): rasterize geometries instead of screen quad
     glBindVertexArray(Rasterizer->QuadVAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);
     

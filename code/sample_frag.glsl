@@ -6,6 +6,7 @@ uniform int SampleCountSoFar;
 uniform int SamplePerPixel;
 uniform int MaxBounceCount;
 
+uniform float FOV;
 uniform vec3 CamP;
 uniform vec3 CamLookAt;
 uniform float Time;
@@ -371,7 +372,8 @@ void main()
         vec3 CamZ = normalize(At - Ro);
         vec3 CamX = normalize(cross(vec3(0, 1, 0), CamZ));
         vec3 CamY = cross(CamZ, CamX);
-        vec3 Rd = normalize(AspectRatio * CamX * UV.x + CamY * UV.y + 1.73 * CamZ);
+        float CamZDist = 1.0 / tan(0.5 * FOV);
+        vec3 Rd = normalize(AspectRatio * CamX * UV.x + CamY * UV.y + CamZDist * CamZ);
         
         vec3 Radiance = vec3(0);
         vec3 Attenuation = vec3(1);

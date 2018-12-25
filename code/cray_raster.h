@@ -9,6 +9,8 @@ struct framebuffer
 
 struct gl_rasterizer
 {
+    f32 FOV;
+    
     int SamplePerPixel;
     int MaxBounceCount;
     

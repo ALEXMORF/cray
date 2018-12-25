@@ -7,6 +7,8 @@
 
 /*TODO(chen):
 
+. speed up parser
+. re-enable caching
 . hardware rasterization for first bounce of light rays
 . Kd-tree partition for static scenes
 . Stackless traversal for BVH and Kd-tree
@@ -39,9 +41,9 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height)
         u8 *RestOfMemory = (u8 *)Memory->Data + sizeof(cray);
         int RestOfMemorySize = Memory->Size - sizeof(cray);
         CRay->MainArena = InitMemoryArena(RestOfMemory, RestOfMemorySize);
-        GlobalTempArena = PushMemoryArena(&CRay->MainArena, MB(500));
+        GlobalTempArena = PushMemoryArena(&CRay->MainArena, GB(1));
         
-        CRay->Rasterizer = InitGLRasterizer(Width, Height);
+        CRay->Rasterizer = InitRasterizer(Width, Height);
         CRay->Scene = InitScene();
         CRay->Uploaded = UploadGeometryToGPU();
         
@@ -65,10 +67,11 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height)
     
     PushUniformI32(&CRay->Rasterizer, "TriangleCount", CRay->Uploaded.TriangleCount);
     PushUniformI32(&CRay->Rasterizer, "BvhEntryCount", CRay->Uploaded.BvhEntryCount);
+    PushUniformF32(&CRay->Rasterizer, "Time", CRay->T);
+    
     PushUniformV3(&CRay->Rasterizer, "CamP", CRay->Scene.CamP);
     PushUniformV3(&CRay->Rasterizer, "CamLookAt", CRay->Scene.CamLookAt);
-    PushUniformF32(&CRay->Rasterizer, "Time", CRay->T);
-    PushUniformF32(&CRay->Rasterizer, "AspectRatio", (f32)Width / (f32)Height);
     
-    Rasterize(&CRay->Rasterizer);
+    mat4 View = Mat4LookAt(CRay->Scene.CamP, CRay->Scene.CamLookAt);
+    Rasterize(&CRay->Rasterizer, CRay->Uploaded.GeometryVAO, View);
 }

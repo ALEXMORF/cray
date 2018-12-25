@@ -12,6 +12,97 @@ InstantiateObjTemporarily(char *Path, mat4 XForm)
     return Model;
 }
 
+internal vertices 
+ConvertModelsToVertices(obj_model *Models, int ModelCount)
+{
+    vertices Result = {};
+    
+    for (int ModelIndex = 0; ModelIndex < ModelCount; ++ModelIndex)
+    {
+        Result.Count += Models[ModelIndex].VertexCount;
+    }
+    Result.Data = PushTempArray(Result.Count, vertex);
+    
+    int VertexCursor = 0;
+    for (int ModelIndex = 0; ModelIndex < ModelCount; ++ModelIndex)
+    {
+        obj_model *Model = Models + ModelIndex;
+        for (int VertIndex = 0; VertIndex < Model->VertexCount; ++VertIndex)
+        {
+            Result.Data[VertexCursor++] = Model->Vertices[VertIndex];
+        }
+    }
+    
+    return Result;
+}
+
+internal triangles
+ConvertVerticesToTriangles(vertices Vertices)
+{
+    triangles Result = {};
+    
+    Result.Count = Vertices.Count / 3;
+    Result.Data = PushTempArray(Result.Count, packed_triangle);
+    
+    int VertexCursor = 0;
+    for (int TriIndex = 0; TriIndex < Result.Count; ++TriIndex)
+    {
+        packed_triangle *Triangle = Result.Data + TriIndex;
+        
+        Triangle->N = Normalize(Vertices.Data[VertexCursor].N);
+        Triangle->Albedo = Vertices.Data[VertexCursor].Albedo;
+        
+        Triangle->A = Vertices.Data[VertexCursor++].P;
+        Triangle->B = Vertices.Data[VertexCursor++].P;
+        Triangle->C = Vertices.Data[VertexCursor++].P;
+    }
+    
+    return Result;
+}
+
+internal void
+BindSSBO(int BindingIndex, void *Data, int Size)
+{
+    //NOTE(chen): upload triangles onto SSBO
+    GLuint SSBO = 0;
+    glGenBuffers(1, &SSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, Size, Data, GL_STATIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BindingIndex, SSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); 
+}
+
+internal GLuint 
+UploadToVAO(vertices Vertices)
+{
+    GLuint VAO = 0;
+    
+    GLuint VBO = 0;
+    glGenBuffers(1, &VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, Vertices.Count*sizeof(vertex), 
+                 Vertices.Data, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 
+                          sizeof(vertex), (void *)offsetof(vertex, P));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 
+                          sizeof(vertex), (void *)offsetof(vertex, N));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 
+                          sizeof(vertex), (void *)offsetof(vertex, Albedo));
+    
+    glBindVertexArray(0);
+    
+    return VAO;
+}
+
 #include "cray_bvh.cpp"
 
 internal uploaded_data
@@ -30,6 +121,7 @@ UploadGeometryToGPU()
     
     int ModelCount = 0;
     obj_model Models[200] = {};
+    //Models[ModelCount++] = InstantiateObjTemporarily("../data/dragon", Mat4Identity());
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/bunny", BunnyXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/serapis", SerapisXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/monkey", MonkeyXForm);
@@ -40,69 +132,21 @@ UploadGeometryToGPU()
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/bigmouth", BigMouthXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/big_scene", Mat4Identity());
     Models[ModelCount++] = InstantiateObjTemporarily("../data/sponza", Mat4Identity());
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/conference", Mat4Identity());
     
-    //NOTE(chen): push into vertices
-    int VertexCount = 0;
-    for (int ModelIndex = 0; ModelIndex < ModelCount; ++ModelIndex)
-    {
-        VertexCount += Models[ModelIndex].VertexCount;
-    }
-    vertex *Vertices = PushTempArray(VertexCount, vertex);
-    {
-        int VertexCursor = 0;
-        
-        for (int ModelIndex = 0; ModelIndex < ModelCount; ++ModelIndex)
-        {
-            obj_model *Model = Models + ModelIndex;
-            for (int VertIndex = 0; VertIndex < Model->VertexCount; ++VertIndex)
-            {
-                Vertices[VertexCursor++] = Model->Vertices[VertIndex];
-            }
-        }
-    }
+    vertices Vertices = ConvertModelsToVertices(Models, ARRAY_COUNT(Models));
+    triangles Triangles = ConvertVerticesToTriangles(Vertices);
     
-    int TriangleCount = VertexCount / 3;
-    packed_triangle *Triangles = PushTempArray(TriangleCount, packed_triangle);
-    {
-        int VertexCursor = 0;
-        for (int TriIndex = 0; TriIndex < TriangleCount; ++TriIndex)
-        {
-            packed_triangle *Triangle = Triangles + TriIndex;
-            
-            Triangle->N = Normalize(Vertices[VertexCursor].N);
-            Triangle->Albedo = Vertices[VertexCursor].Albedo;
-            
-            Triangle->A = Vertices[VertexCursor++].P;
-            Triangle->B = Vertices[VertexCursor++].P;
-            Triangle->C = Vertices[VertexCursor++].P;
-        }
-    }
-    
-    linear_bvh BVH = ConstructLinearBVH(Triangles, TriangleCount, 
+    //NOTE(chen): BVH modifies the triangle array, therefore 
+    //            triangles' SSBO binding must happen after 
+    //            BVH's construction
+    linear_bvh BVH = ConstructLinearBVH(Triangles.Data, 
+                                        Triangles.Count, 
                                         &GlobalTempArena);
+    BindSSBO(0, Triangles.Data, Triangles.Count*sizeof(packed_triangle));
+    BindSSBO(1, BVH.Data, BVH.Count*sizeof(bvh_entry));
     
-    //NOTE(chen): upload triangles onto SSBO
-    GLuint TriangleSSBO = 0;
-    glGenBuffers(1, &TriangleSSBO);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, TriangleSSBO);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, 
-                 TriangleCount * sizeof(packed_triangle), 
-                 Triangles, GL_STATIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, TriangleSSBO);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); 
-    
-    //NOTE(chen): upload BVH onto SSBO
-    GLuint BvhSSBO = 0;
-    glGenBuffers(1, &BvhSSBO);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, BvhSSBO);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, 
-                 BVH.Count * sizeof(bvh_entry), 
-                 BVH.Data, GL_STATIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, BvhSSBO);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); 
-    
-    Uploaded.TriangleCount = TriangleCount;
+    Uploaded.GeometryVAO = UploadToVAO(Vertices);
+    Uploaded.TriangleCount = Triangles.Count;
     Uploaded.BvhEntryCount = BVH.Count;
     
     return Uploaded;

@@ -7,8 +7,6 @@
 
 /*TODO(chen):
 
-. speed up parser
-. re-enable caching
 . hardware rasterization for first bounce of light rays
 . Kd-tree partition for static scenes
 . Stackless traversal for BVH and Kd-tree
@@ -30,6 +28,32 @@
 
 */
 
+internal void APIENTRY 
+OpenglCallback(GLenum Source, GLenum Type,
+               GLuint ID, GLenum Severity,
+               GLsizei Length,
+               const GLchar* Message,
+               const void* UserData)
+{
+    switch (Type)
+    {
+        case GL_DEBUG_TYPE_ERROR:
+        case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
+        case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
+        case GL_DEBUG_TYPE_PORTABILITY:
+        case GL_DEBUG_TYPE_PERFORMANCE:
+        {
+            ASSERT(!"OpenGL Error");
+        } break;
+    }
+    
+    if (Severity == GL_DEBUG_SEVERITY_MEDIUM || 
+        Severity == GL_DEBUG_SEVERITY_HIGH)
+    {
+        ASSERT(!"High Severity issue");
+    }
+}
+
 internal void
 RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height)
 {
@@ -42,6 +66,9 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height)
         int RestOfMemorySize = Memory->Size - sizeof(cray);
         CRay->MainArena = InitMemoryArena(RestOfMemory, RestOfMemorySize);
         GlobalTempArena = PushMemoryArena(&CRay->MainArena, GB(1));
+        
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        glDebugMessageCallback(OpenglCallback, 0);
         
         CRay->Rasterizer = InitRasterizer(Width, Height);
         CRay->Scene = InitScene();

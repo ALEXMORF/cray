@@ -260,7 +260,7 @@ ReadInteger(char *Str, i32 *Integer_Out)
         Integer = Integer * 10 + Digit;
     }
     
-    *Integer_Out = Integer;
+    *Integer_Out = Sign * Integer;
     return Cursor;
 }
 
@@ -372,15 +372,15 @@ LoadObj(char *Path, memory_arena *Arena)
     int FaceCount = 0;
     while (*ObjFileWalker)
     {
-        if (StartsWith(ObjFileWalker, "v"))
-        {
-            TempVertexCount += 1;
-        }
         if (StartsWith(ObjFileWalker, "vn"))
         {
             TempNormalCount += 1;
         }
-        if (StartsWith(ObjFileWalker, "f"))
+        else if (StartsWith(ObjFileWalker, "v"))
+        {
+            TempVertexCount += 1;
+        }
+        else if (StartsWith(ObjFileWalker, "f"))
         {
             FaceCount += 1;
         }
@@ -401,19 +401,19 @@ LoadObj(char *Path, memory_arena *Arena)
     ObjFileWalker = ObjFileContent;
     while (*ObjFileWalker)
     {
-        if (StartsWith(ObjFileWalker, "v"))
-        {
-            v3 Vertex = {};
-            ParseV3(ObjFileWalker, "v", &Vertex);
-            TempVertices[TempVertexCursor++] = Vertex;
-        }
         if (StartsWith(ObjFileWalker, "vn"))
         {
             v3 Normal = {};
             ParseV3(ObjFileWalker, "vn", &Normal);
             TempNormals[TempNormalCursor++] = Normal;
         }
-        if (StartsWith(ObjFileWalker, "f"))
+        else if (StartsWith(ObjFileWalker, "v"))
+        {
+            v3 Vertex = {};
+            ParseV3(ObjFileWalker, "v", &Vertex);
+            TempVertices[TempVertexCursor++] = Vertex;
+        }
+        else if (StartsWith(ObjFileWalker, "f"))
         {
             int VertexIndices[3] = {};
             int NormalIndices[3] = {};
@@ -423,9 +423,23 @@ LoadObj(char *Path, memory_arena *Arena)
             
             for (int VI = 0; VI < 3; ++VI)
             {
-                //NOTE(chen): OBJ is 1-based, making it 0-based
-                VertexIndices[VI] -= 1;
-                NormalIndices[VI] -= 1;
+                //NOTE(chen): negative index wraps
+                if (VertexIndices[VI] < 0)
+                {
+                    VertexIndices[VI] += TempVertexCount;
+                }
+                if (NormalIndices[VI] < 0)
+                {
+                    NormalIndices[VI] += TempNormalCount;
+                }
+                else
+                {
+                    //NOTE(chen): OBJ is 1-based, making it 0-based
+                    VertexIndices[VI] -= 1;
+                    NormalIndices[VI] -= 1;
+                }
+                ASSERT(VertexIndices[VI] >= 0 && VertexIndices[VI] < TempVertexCount);
+                ASSERT(NormalIndices[VI] >= 0 && NormalIndices[VI] < TempNormalCount);
                 
                 Result.Vertices[VertexCursor].P = TempVertices[VertexIndices[VI]];
                 Result.Vertices[VertexCursor].N = TempNormals[NormalIndices[VI]];
@@ -469,9 +483,11 @@ LoadObj(char *Path, memory_arena *Arena)
     ASSERT(TempNormalCursor == TempNormalCount);
     ASSERT(VertexCursor == Result.VertexCount);
     
+#if 0
     char ObjCachePath[255];
     snprintf(ObjCachePath, sizeof(ObjCachePath), "%s.cache", Path);
     WriteObjCache(ObjCachePath, Result);
+#endif
     
     return Result;
 }

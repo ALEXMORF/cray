@@ -173,34 +173,33 @@ ConstructBVH(primitive *Prims, int StartIndex, int Count, memory_arena *Arena)
         TotalBound = Union(TotalBound, Prims[PrimIndex].Bound);
     }
     Node->Bound = TotalBound;
+    ASSERT(TotalBound.IsValid);
     
-    if (Count > 5)
+    bound CentroidBound = {};
+    for (int PrimIndex = StartIndex; PrimIndex < StartIndex+Count; ++PrimIndex)
     {
-        ASSERT(TotalBound.IsValid);
-        
-        bound CentroidBound = {};
-        for (int PrimIndex = StartIndex; PrimIndex < StartIndex+Count; ++PrimIndex)
-        {
-            CentroidBound = Union(CentroidBound, Prims[PrimIndex].Centroid);
-        }
-        
-        f32 RangeX = CentroidBound.Max.X - CentroidBound.Min.X;
-        f32 RangeY = CentroidBound.Max.Y - CentroidBound.Min.Y;
-        f32 RangeZ = CentroidBound.Max.Z - CentroidBound.Min.Z;
-        
-        f32 MaxRange = RangeX;
-        axis PartitionAxis = AXIS_X;
-        if (RangeY > MaxRange) 
-        {
-            MaxRange = RangeY;
-            PartitionAxis = AXIS_Y;
-        }
-        if (RangeZ > MaxRange) 
-        {
-            MaxRange = RangeZ;
-            PartitionAxis = AXIS_Z;
-        }
-        
+        CentroidBound = Union(CentroidBound, Prims[PrimIndex].Centroid);
+    }
+    
+    f32 RangeX = CentroidBound.Max.X - CentroidBound.Min.X;
+    f32 RangeY = CentroidBound.Max.Y - CentroidBound.Min.Y;
+    f32 RangeZ = CentroidBound.Max.Z - CentroidBound.Min.Z;
+    
+    f32 MaxRange = RangeX;
+    axis PartitionAxis = AXIS_X;
+    if (RangeY > MaxRange) 
+    {
+        MaxRange = RangeY;
+        PartitionAxis = AXIS_Y;
+    }
+    if (RangeZ > MaxRange) 
+    {
+        MaxRange = RangeZ;
+        PartitionAxis = AXIS_Z;
+    }
+    
+    if (Count > 5 && MaxRange > 0.0f)
+    {
         GlobalPartitionAxis = PartitionAxis;
         qsort(Prims+StartIndex, Count, sizeof(primitive), ComparePrimitive);
         

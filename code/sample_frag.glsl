@@ -1,5 +1,9 @@
 #version 440 core
 
+#define DEBUG_SHADER 0
+#define TIMEOUT_SHADER 0
+#define TIMEOUT_LIMIT 20
+
 uniform sampler2D PrevSamplesTex;
 uniform int SampleCountSoFar;
 
@@ -224,7 +228,7 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
         if (T > T_MIN && T < Res.T)
         {
             Res.T = T;
-            Res.Albedo = vec3(0.5, 0.3, 0.2);
+            Res.Albedo = vec3(0.6);
             Res.N = vec3(0, 1, 0);
         }
     }
@@ -233,8 +237,26 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
     int NodesToVisit[32];
     int CurrIndex = 0;
     
+#if TIMEOUT_SHADER
+    int TriTestCount = 0;
+#endif
+    
     while (true)
     {
+#if DEBUG_SHADER
+        if (CurrIndex >= BvhEntryCount)
+        {
+            discard;
+        }
+#endif
+        
+#if TIMEOUT_SHADER
+        if (TriTestCount < 0 || TriTestCount > TIMEOUT_LIMIT)
+        {
+            return Res;
+        }
+#endif
+        
         float BoundT = RayIntersectBound(Ro, Rd, BvhEntries[CurrIndex].Bound);
         if (BoundT < Res.T && BoundT != T_MAX)
         {
@@ -250,16 +272,35 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
                     NodesToVisit[ToVisitOffset++] = CurrIndex + 1;
                     CurrIndex = BvhEntries[CurrIndex].Offset;
                 }
+                
+#if DEBUG_SHADER
+                if (ToVisitOffset <= 0 || ToVisitOffset >= 32)
+                {
+                    discard;
+                }
+#endif
             }
             else
             {
                 int StartOffset = BvhEntries[CurrIndex].Offset;
                 int EndOffset = (StartOffset + 
                                  BvhEntries[CurrIndex].PrimitiveCount);
+                
+#if TIMEOUT_SHADER
+                TriTestCount += BvhEntries[CurrIndex].PrimitiveCount;
+#endif
+                
                 for (int TriIndex = StartOffset; 
                      TriIndex < EndOffset; 
                      ++TriIndex)
                 {
+#if DEBUG_SHADER
+                    if (TriIndex < 0 || TriIndex > TriangleCount)
+                    {
+                        discard;
+                    }
+#endif
+                    
                     float T = RayIntersectTriangle(Ro, Rd, 
                                                    Triangles[TriIndex].A,
                                                    Triangles[TriIndex].B,
@@ -272,12 +313,24 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
                     }
                 }
                 
+#if DEBUG_SHADER
+                if (ToVisitOffset < 0 || ToVisitOffset > 32)
+                {
+                    discard;
+                }
+#endif
                 if (ToVisitOffset == 0) break;
                 CurrIndex = NodesToVisit[--ToVisitOffset];
             }
         }
         else
         {
+#if DEBUG_SHADER
+            if (ToVisitOffset < 0 || ToVisitOffset > 32)
+            {
+                discard;
+            }
+#endif
             if (ToVisitOffset == 0) break;
             CurrIndex = NodesToVisit[--ToVisitOffset];
         }

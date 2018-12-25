@@ -123,7 +123,7 @@ InitFramebuffer(int Width, int Height)
     
     glGenRenderbuffers(1, &Framebuffer.RBOHandle);
     glBindRenderbuffer(GL_RENDERBUFFER, Framebuffer.RBOHandle);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, Width, Height);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, Width, Height);
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
     
     glGenFramebuffers(1, &Framebuffer.Handle);
@@ -131,7 +131,7 @@ InitFramebuffer(int Width, int Height)
     
     // bind RBO
     glBindRenderbuffer(GL_RENDERBUFFER, Framebuffer.RBOHandle);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_COMPONENT, 
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, 
                               GL_RENDERBUFFER, Framebuffer.RBOHandle);
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
     

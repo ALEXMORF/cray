@@ -118,20 +118,21 @@ UploadGeometryToGPU()
     mat4 SphinxXForm = Mat4Scale(0.7f) * Mat4RotateAroundY(0.9f*Pi32) * Mat4Translate(0.0f, 0.0f, 1.0f);
     mat4 BunnyXForm = Mat4RotateAroundY(1.1f*Pi32) * Mat4Translate(0.0f, -0.1f, 0.0f);
     mat4 SerapisXForm = Mat4RotateAroundY(1.3f*Pi32) * Mat4Translate(0.0f, 0.0f, 0.0f);
+    mat4 DragonXForm = Mat4Translate(0.0f, 0.0f, 0.0f);
     
     int ModelCount = 0;
     obj_model Models[200] = {};
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/dragon", Mat4Identity());
+    Models[ModelCount++] = InstantiateObjTemporarily("../data/dragon", Mat4Identity());
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/bunny", BunnyXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/serapis", SerapisXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/monkey", MonkeyXForm);
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/sphinx", SphinxXForm);
+    //kModels[ModelCount++] = InstantiateObjTemporarily("../data/sphinx", SphinxXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/light_room", RoomXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/tiger", TigerXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/moose", MooseXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/bigmouth", BigMouthXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/big_scene", Mat4Identity());
-    Models[ModelCount++] = InstantiateObjTemporarily("../data/sponza", Mat4Identity());
+    //Models[ModelCount++] = InstantiateObjTemporarily("../data/sponza", Mat4Identity());
     
     vertices Vertices = ConvertModelsToVertices(Models, ARRAY_COUNT(Models));
     triangles Triangles = ConvertVerticesToTriangles(Vertices);

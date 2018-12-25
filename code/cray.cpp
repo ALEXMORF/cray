@@ -7,12 +7,12 @@
 
 /*TODO(chen):
 
-. debug view the BVH
+. hardware rasterization for first bounce of light rays
+. Kd-tree partition for static scenes
+. Stackless traversal for BVH and Kd-tree
 . Model level partitioning
 . imgui for controlling renderer (sampling rate, max bounce count)
 . imgui for profiling (speed for everything)
-. Try hardware rasterization for first bounce of light rays
-. Kd-tree partition for static scenes
 . environment map
 . imgui for loading/unloading scenes
 . dynamically manipulate objects
@@ -64,6 +64,7 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height)
     PrepareForRasterization(&CRay->Rasterizer, Width, Height);
     
     PushUniformI32(&CRay->Rasterizer, "TriangleCount", CRay->Uploaded.TriangleCount);
+    PushUniformI32(&CRay->Rasterizer, "BvhEntryCount", CRay->Uploaded.BvhEntryCount);
     PushUniformV3(&CRay->Rasterizer, "CamP", CRay->Scene.CamP);
     PushUniformV3(&CRay->Rasterizer, "CamLookAt", CRay->Scene.CamLookAt);
     PushUniformF32(&CRay->Rasterizer, "Time", CRay->T);

@@ -196,11 +196,9 @@ LoadObj(char *Path, memory_arena *Arena)
             {
                 MtlFileWalker = GotoNextLine(MtlFileWalker);
             }
-            
             sscanf(MtlFileWalker, "Kd %f %f %f", 
                    &NewMat.Albedo.X, &NewMat.Albedo.Y, &NewMat.Albedo.Z);
             
-            //NewMat.Albedo = Square(NewMat.Albedo);
             Mats[MatCount++] = NewMat;
         }
         

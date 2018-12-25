@@ -148,7 +148,7 @@ WinMain(HINSTANCE CurrentInstance,
         
         f32 EstimatedFPS = 1.0 / dT;
         char TitleBuf[255];
-        snprintf(TitleBuf, sizeof(TitleBuf), "CRay - %.2f FPS", EstimatedFPS);
+        snprintf(TitleBuf, sizeof(TitleBuf), "CRay - %.2f FPS, %.2f ms elapsed", EstimatedFPS, ElapsedTimeInMS);
         SetWindowTextA(Window, TitleBuf);
     }
     

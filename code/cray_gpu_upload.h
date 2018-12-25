@@ -21,4 +21,5 @@ struct packed_triangle
 struct uploaded_data
 {
     int TriangleCount;
+    int BvhEntryCount;
 };

@@ -211,14 +211,6 @@ ConstructBVH(primitive *Prims, int StartIndex, int Count, memory_arena *Arena)
                                          TotalBound);
         int RightCount = Count - LeftCount;
         
-        //NOTE(chen): can't cut anymore, fallback to equal cut
-        if (LeftCount == Count || RightCount == Count)
-        {
-            ASSERT(!"shiz");
-            LeftCount = Count / 2;
-            RightCount = Count - LeftCount;
-        }
-        
         Node->PrimitiveCount = -1;
         Node->PartitionAxis = PartitionAxis;
         Node->Left = ConstructBVH(Prims, StartIndex, LeftCount, Arena);

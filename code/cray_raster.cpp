@@ -165,7 +165,7 @@ InitGLRasterizer(int Width, int Height)
     Rasterizer.BufferIndex = 1;
     
     Rasterizer.SamplePerPixel = 1;
-    Rasterizer.MaxBounceCount = 2;
+    Rasterizer.MaxBounceCount = 1;
     
     return Rasterizer;
 }

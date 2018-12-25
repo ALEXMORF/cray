@@ -26,10 +26,12 @@ UploadGeometryToGPU()
     mat4 BigMouthXForm = Mat4RotateAroundY(0.7f*Pi32) * Mat4Translate(-1.0f, 0.0f, 0.0f);
     mat4 SphinxXForm = Mat4Scale(0.7f) * Mat4RotateAroundY(0.9f*Pi32) * Mat4Translate(0.0f, 0.0f, 1.0f);
     mat4 BunnyXForm = Mat4RotateAroundY(1.1f*Pi32) * Mat4Translate(0.0f, -0.1f, 0.0f);
+    mat4 SerapisXForm = Mat4RotateAroundY(1.3f*Pi32) * Mat4Translate(0.0f, 0.0f, 0.0f);
     
     int ModelCount = 0;
     obj_model Models[200] = {};
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/bunny", BunnyXForm);
+    //Models[ModelCount++] = InstantiateObjTemporarily("../data/serapis", SerapisXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/monkey", MonkeyXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/sphinx", SphinxXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/light_room", RoomXForm);
@@ -38,6 +40,7 @@ UploadGeometryToGPU()
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/bigmouth", BigMouthXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/big_scene", Mat4Identity());
     Models[ModelCount++] = InstantiateObjTemporarily("../data/sponza", Mat4Identity());
+    //Models[ModelCount++] = InstantiateObjTemporarily("../data/conference", Mat4Identity());
     
     //NOTE(chen): push into vertices
     int VertexCount = 0;
@@ -100,6 +103,7 @@ UploadGeometryToGPU()
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); 
     
     Uploaded.TriangleCount = TriangleCount;
+    Uploaded.BvhEntryCount = BVH.Count;
     
     return Uploaded;
 }

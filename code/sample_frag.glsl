@@ -12,6 +12,7 @@ uniform float Time;
 uniform float AspectRatio;
 
 uniform int TriangleCount;
+uniform int BvhEntryCount;
 
 struct triangle
 {
@@ -222,7 +223,7 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
         if (T > T_MIN && T < Res.T)
         {
             Res.T = T;
-            Res.Albedo = vec3(0.8);
+            Res.Albedo = vec3(0.5, 0.3, 0.2);
             Res.N = vec3(0, 1, 0);
         }
     }
@@ -284,6 +285,22 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
     return Res;
 }
 
+vec3 SampleBvh(in vec3 Ro, in vec3 Rd)
+{
+    vec3 Acc = vec3(0.00);
+    
+    for (int EntryIndex = 0; EntryIndex < BvhEntryCount; ++EntryIndex)
+    {
+        float BoundT = RayIntersectBound(Ro, Rd, BvhEntries[EntryIndex].Bound);
+        if (BoundT != T_MAX)
+        {
+            Acc.r += 0.01;
+        }
+    }
+    
+    return Acc;
+}
+
 vec3 Ortho(in vec3 X)
 {
     vec3 Res;
@@ -330,7 +347,7 @@ vec3 SampleCone(in vec3 N, in float Extent)
 
 vec3 SampleEnvLight(in vec3 Rd)
 {
-    vec3 Zenith = vec3(0.0, 0.44, 3.66);
+    vec3 Zenith = vec3(0.0, 0.44, 2.66);
     vec3 Azimuth = vec3(1.0, 1.4, 1.6);
     return mix(Azimuth, Zenith, clamp(Rd.y, 0.0, 1.0));
 }

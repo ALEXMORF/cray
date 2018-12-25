@@ -358,7 +358,7 @@ void main()
         
         vec3 Radiance = vec3(0);
         vec3 Attenuation = vec3(1);
-        vec3 L = normalize(vec3(0.5f, 0.4f, -0.5f));
+        vec3 L = normalize(vec3(0.5f, 2.4f, -0.5f));
         vec3 SunRadiance = vec3(4.0);
         
         vec3 CurrRo = Ro;

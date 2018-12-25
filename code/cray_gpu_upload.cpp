@@ -30,13 +30,14 @@ UploadGeometryToGPU()
     int ModelCount = 0;
     obj_model Models[200] = {};
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/bunny", BunnyXForm);
-    Models[ModelCount++] = InstantiateObjTemporarily("../data/monkey", MonkeyXForm);
+    //Models[ModelCount++] = InstantiateObjTemporarily("../data/monkey", MonkeyXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/sphinx", SphinxXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/light_room", RoomXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/tiger", TigerXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/moose", MooseXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/bigmouth", BigMouthXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/big_scene", Mat4Identity());
+    Models[ModelCount++] = InstantiateObjTemporarily("../data/sponza", Mat4Identity());
     
     //NOTE(chen): push into vertices
     int VertexCount = 0;
@@ -64,12 +65,14 @@ UploadGeometryToGPU()
         int VertexCursor = 0;
         for (int TriIndex = 0; TriIndex < TriangleCount; ++TriIndex)
         {
-            Triangles[TriIndex].N = Normalize(Vertices[VertexCursor].N);
-            Triangles[TriIndex].Albedo = Vertices[VertexCursor].Albedo;
+            packed_triangle *Triangle = Triangles + TriIndex;
             
-            Triangles[TriIndex].A = Vertices[VertexCursor++].P;
-            Triangles[TriIndex].B = Vertices[VertexCursor++].P;
-            Triangles[TriIndex].C = Vertices[VertexCursor++].P;
+            Triangle->N = Normalize(Vertices[VertexCursor].N);
+            Triangle->Albedo = Vertices[VertexCursor].Albedo;
+            
+            Triangle->A = Vertices[VertexCursor++].P;
+            Triangle->B = Vertices[VertexCursor++].P;
+            Triangle->C = Vertices[VertexCursor++].P;
         }
     }
     

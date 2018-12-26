@@ -162,7 +162,6 @@ ConstructBVH(primitive *Prims, int StartIndex, int Count, memory_arena *Arena)
         TotalBound = Union(TotalBound, Prims[PrimIndex].Bound);
     }
     Node->Bound = TotalBound;
-    ASSERT(TotalBound.IsValid);
     
     bound CentroidBound = {};
     for (int PrimIndex = StartIndex; PrimIndex < StartIndex+Count; ++PrimIndex)
@@ -187,7 +186,7 @@ ConstructBVH(primitive *Prims, int StartIndex, int Count, memory_arena *Arena)
         PartitionAxis = AXIS_Z;
     }
     
-    if (Count > 5 && MaxRange > 0.0f)
+    if (Count > 5 && MaxRange > 0.001f)
     {
         f32 Cut = ChooseBestCutSAH(Prims, StartIndex, Count, 
                                    PartitionAxis, 

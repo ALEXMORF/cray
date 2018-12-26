@@ -1,11 +1,11 @@
 #pragma once
 
-#define OBJ_CACHE_VERSION 8
+#define OBJ_CACHE_VERSION 11
 
 struct material
 {
     char Name[255];
-    v3 Albedo;
+    v4 Albedo;
     v3 Emission;
 };
 

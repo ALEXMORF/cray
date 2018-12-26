@@ -7,7 +7,6 @@
 
 /*TODO(chen):
 
-. bake alpha into abledo (the A channel)
 . UI for controlling renderer (max bounce count)
 . UI for controlling scene (sky light, sun light, sun direction, toggle ground plane)
 . UI toggle rasterization mode vs pure raytracing

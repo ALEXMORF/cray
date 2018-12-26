@@ -265,6 +265,18 @@ ReadInteger(char *Str, i32 *Integer_Out)
 }
 
 inline b32
+ParseFloat(char *Cursor, char *Prefix, f32 *Float_Out)
+{
+    Cursor = SkipSpaces(Cursor);
+    EXPECT_STR(Cursor, Prefix);
+    Cursor = SkipSpaces(Cursor);
+    
+    Cursor = ReadFloat(Cursor, Float_Out);
+    
+    return true;
+}
+
+inline b32
 ParseV3(char *Cursor, char *Prefix, v3 *V_Out)
 {
     Cursor = SkipSpaces(Cursor);
@@ -359,6 +371,12 @@ LoadObj(char *Path, memory_arena *Arena)
                 Mats[MatCount-1].Albedo.R = Albedo3.R;
                 Mats[MatCount-1].Albedo.G = Albedo3.G;
                 Mats[MatCount-1].Albedo.B = Albedo3.B;
+                Mats[MatCount-1].Albedo.A = 1.0f;
+            }
+            else if (StartsWith(MtlFileWalker, "d"))
+            {
+                ASSERT(MatCount > 0);
+                ParseFloat(MtlFileWalker, "d", &Mats[MatCount-1].Albedo.A);
             }
             else if (StartsWith(MtlFileWalker, "Ke"))
             {
@@ -403,6 +421,7 @@ LoadObj(char *Path, memory_arena *Arena)
     Result.VertexCount = FaceCount * 3;
     Result.Vertices = PushArray(Arena, Result.VertexCount, vertex);
     int VertexCursor = 0;
+    int AlphaVertexCount = 0;
     
     int CurrentMatIndex = -1;
     ObjFileWalker = ObjFileContent;
@@ -422,48 +441,59 @@ LoadObj(char *Path, memory_arena *Arena)
         }
         else if (StartsWith(ObjFileWalker, "f"))
         {
-            int VertexIndices[3] = {};
-            int NormalIndices[3] = {};
+            //NOTE(chen): discards faces with alpha less than 1
+            b32 FaceIsTransparent = (CurrentMatIndex != -1 &&
+                                     Mats[CurrentMatIndex].Albedo.A < 0.9f);
             
-            b32 ParsedFace = ParseFaceWithTexCoord(ObjFileWalker, VertexIndices, NormalIndices);
-            ASSERT(ParsedFace);
-            
-            for (int VI = 0; VI < 3; ++VI)
+            if (!FaceIsTransparent)
             {
-                //NOTE(chen): negative index wraps
-                if (VertexIndices[VI] < 0)
-                {
-                    VertexIndices[VI] += TempVertexCount;
-                }
-                if (NormalIndices[VI] < 0)
-                {
-                    NormalIndices[VI] += TempNormalCount;
-                }
-                else
-                {
-                    //NOTE(chen): OBJ is 1-based, making it 0-based
-                    VertexIndices[VI] -= 1;
-                    NormalIndices[VI] -= 1;
-                }
-                ASSERT(VertexIndices[VI] >= 0 && VertexIndices[VI] < TempVertexCount);
-                ASSERT(NormalIndices[VI] >= 0 && NormalIndices[VI] < TempNormalCount);
+                int VertexIndices[3] = {};
+                int NormalIndices[3] = {};
                 
-                Result.Vertices[VertexCursor].P = TempVertices[VertexIndices[VI]];
-                Result.Vertices[VertexCursor].N = TempNormals[NormalIndices[VI]];
+                b32 ParsedFace = ParseFaceWithTexCoord(ObjFileWalker, VertexIndices, NormalIndices);
+                ASSERT(ParsedFace);
                 
-                if (CurrentMatIndex != -1)
+                for (int VI = 0; VI < 3; ++VI)
                 {
-                    Result.Vertices[VertexCursor].Albedo = Mats[CurrentMatIndex].Albedo;
-                    Result.Vertices[VertexCursor].Emission = Mats[CurrentMatIndex].Emission;
+                    //NOTE(chen): negative index wraps
+                    if (VertexIndices[VI] < 0)
+                    {
+                        VertexIndices[VI] += TempVertexCount;
+                    }
+                    if (NormalIndices[VI] < 0)
+                    {
+                        NormalIndices[VI] += TempNormalCount;
+                    }
+                    else
+                    {
+                        //NOTE(chen): OBJ is 1-based, making it 0-based
+                        VertexIndices[VI] -= 1;
+                        NormalIndices[VI] -= 1;
+                    }
+                    ASSERT(VertexIndices[VI] >= 0 && VertexIndices[VI] < TempVertexCount);
+                    ASSERT(NormalIndices[VI] >= 0 && NormalIndices[VI] < TempNormalCount);
+                    
+                    Result.Vertices[VertexCursor].P = TempVertices[VertexIndices[VI]];
+                    Result.Vertices[VertexCursor].N = TempNormals[NormalIndices[VI]];
+                    
+                    if (CurrentMatIndex != -1)
+                    {
+                        Result.Vertices[VertexCursor].Albedo = V3(Mats[CurrentMatIndex].Albedo);
+                        Result.Vertices[VertexCursor].Emission = Mats[CurrentMatIndex].Emission;
+                    }
+                    else
+                    {
+                        //NOTE(chen): default material
+                        Result.Vertices[VertexCursor].Albedo = V3(0.64f);
+                        Result.Vertices[VertexCursor].Emission = V3(0.0f);
+                    }
+                    
+                    VertexCursor += 1;
                 }
-                else
-                {
-                    //NOTE(chen): default material
-                    Result.Vertices[VertexCursor].Albedo = V3(0.64f);
-                    Result.Vertices[VertexCursor].Emission = V3(0.0f);
-                }
-                
-                VertexCursor += 1;
+            }
+            else
+            {
+                AlphaVertexCount += 3;
             }
         }
         else if (StartsWith(ObjFileWalker, "usemtl"))
@@ -490,7 +520,8 @@ LoadObj(char *Path, memory_arena *Arena)
     
     ASSERT(TempVertexCursor == TempVertexCount);
     ASSERT(TempNormalCursor == TempNormalCount);
-    ASSERT(VertexCursor == Result.VertexCount);
+    ASSERT(VertexCursor + AlphaVertexCount == Result.VertexCount);
+    Result.VertexCount -= AlphaVertexCount;
     
     char ObjCachePath[255];
     snprintf(ObjCachePath, sizeof(ObjCachePath), "%s.cache", Path);

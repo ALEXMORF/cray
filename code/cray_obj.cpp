@@ -353,8 +353,13 @@ LoadObj(char *Path, memory_arena *Arena)
                 {
                     MtlFileWalker = GotoNextLine(MtlFileWalker);
                 }
-                
                 ParseV3(MtlFileWalker, "Kd", &NewMat.Albedo);
+                
+                while (!StartsWith(MtlFileWalker, "Ke"))
+                {
+                    MtlFileWalker = GotoNextLine(MtlFileWalker);
+                }
+                ParseV3(MtlFileWalker, "Ke", &NewMat.Emission);
                 
                 Mats[MatCount++] = NewMat;
             }
@@ -447,11 +452,13 @@ LoadObj(char *Path, memory_arena *Arena)
                 if (CurrentMatIndex != -1)
                 {
                     Result.Vertices[VertexCursor].Albedo = Mats[CurrentMatIndex].Albedo;
+                    Result.Vertices[VertexCursor].Emission = Mats[CurrentMatIndex].Emission;
                 }
                 else
                 {
-                    //NOTE(chen): default color
+                    //NOTE(chen): default material
                     Result.Vertices[VertexCursor].Albedo = V3(0.64f);
+                    Result.Vertices[VertexCursor].Emission = V3(0.0f);
                 }
                 
                 VertexCursor += 1;

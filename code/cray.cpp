@@ -7,10 +7,12 @@
 
 /*TODO(chen):
 
-. hardware rasterization for first bounce of light rays
+. combat rasterization-based artifacts
 . Kd-tree partition for interior scenes
-. Use shadow map as direct light sampling instead of raytracing
+. Use shadow map as direct light sampling instead of raytracing 
+. don't use shadow map first first ray hits to preserve nice direct shadows
 . Stackless traversal for BVH and Kd-tree
+. more compact BVH entry
 . Model level partitioning
 . imgui for controlling renderer (sampling rate, max bounce count)
 . imgui for profiling (speed for everything)
@@ -92,14 +94,5 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height)
     }
     
     PrepareForRasterization(&CRay->Rasterizer, Width, Height);
-    
-    PushUniformI32(&CRay->Rasterizer, "TriangleCount", CRay->Uploaded.TriangleCount);
-    PushUniformI32(&CRay->Rasterizer, "BvhEntryCount", CRay->Uploaded.BvhEntryCount);
-    PushUniformF32(&CRay->Rasterizer, "Time", CRay->T);
-    
-    PushUniformV3(&CRay->Rasterizer, "CamP", CRay->Scene.CamP);
-    PushUniformV3(&CRay->Rasterizer, "CamLookAt", CRay->Scene.CamLookAt);
-    
-    mat4 View = Mat4LookAt(CRay->Scene.CamP, CRay->Scene.CamLookAt);
-    Rasterize(&CRay->Rasterizer, CRay->Uploaded.GeometryVAO, View);
+    Rasterize(&CRay->Rasterizer, &CRay->Scene, &CRay->Uploaded, CRay->T);
 }

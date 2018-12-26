@@ -4,10 +4,14 @@
 #define TIMEOUT_SHADER 0
 #define TIMEOUT_LIMIT 20
 
+uniform sampler2D PositionTex;
+uniform sampler2D NormalTex;
+uniform sampler2D AlbedoTex;
+uniform sampler2D EmissionTex;
+
 uniform sampler2D PrevSamplesTex;
 uniform int SampleCountSoFar;
 
-uniform int SamplePerPixel;
 uniform int MaxBounceCount;
 
 uniform float FOV;
@@ -26,6 +30,7 @@ struct triangle
     vec3 C;
     vec3 N;
     vec3 Albedo;
+    vec3 Emission;
 };
 
 layout(std430, binding = 0) buffer TriBuffer
@@ -75,6 +80,7 @@ struct contact_info
     float T;
     vec3 N;
     vec3 Albedo;
+    vec3 Emission;
 };
 
 #define SPHERE_COUNT 2
@@ -206,6 +212,7 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
 {
     contact_info Res;
     Res.T = T_MAX;
+    Res.Emission = vec3(0);
     
 #if 0
     // spheres
@@ -222,6 +229,7 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
     }
 #endif
     
+#if 0
     // plane
     {
         float T = RayIntersectPlane(Ro, Rd, vec3(0,1,0), 0);
@@ -232,6 +240,7 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
             Res.N = vec3(0, 1, 0);
         }
     }
+#endif
     
     int ToVisitOffset = 0;
     int NodesToVisit[32];
@@ -309,6 +318,7 @@ contact_info Raytrace(in vec3 Ro, in vec3 Rd)
                     {
                         Res.T = T;
                         Res.Albedo = Triangles[TriIndex].Albedo;
+                        Res.Emission = Triangles[TriIndex].Emission;
                         Res.N = Triangles[TriIndex].N;
                     }
                 }
@@ -414,35 +424,59 @@ void main()
     
     vec2 UV = 2.0 * FragP.xy - 1.0;
     vec2 Delta = vec2(dFdx(UV.x), dFdy(UV.y));
+    UV += Delta * Rand2();
     
-    for (int SampleIndex = 0; SampleIndex < SamplePerPixel; ++SampleIndex)
+    vec3 Ro = CamP;
+    vec3 At = CamLookAt;
+    vec3 CamZ = normalize(At - Ro);
+    vec3 CamX = normalize(cross(vec3(0, 1, 0), CamZ));
+    vec3 CamY = cross(CamZ, CamX);
+    float CamZDist = 1.0 / tan(0.5 * FOV);
+    vec3 Rd = normalize(AspectRatio * CamX * UV.x + CamY * UV.y + CamZDist * CamZ);
+    
+    vec3 Radiance = vec3(0);
+    vec3 Attenuation = vec3(1);
+    vec3 L = normalize(vec3(0.5f, 2.4f, -0.5f));
+    vec3 SunRadiance = vec3(4.0);
+    
+    vec3 CurrRo = Ro;
+    vec3 CurrRd = Rd;
+    
+#if 1
+    //NOTE(chen): use G-buffer as first bounce
+    Radiance += Attenuation * texture(EmissionTex, FragP.xy).rgb;
+    Attenuation *= texture(AlbedoTex, FragP.xy).rgb;
+    vec3 FirstBounceN = texture(NormalTex, FragP.xy).xyz;
+    vec3 FirstBounceP = texture(PositionTex, FragP.xy).xyz;
+    float FirstT = length(CurrRo - FirstBounceP);
+    CurrRo = CurrRo + (FirstT - T_MIN - 0.01) * CurrRd;
+    CurrRo += 10.0 * FirstBounceN * T_MIN;
+    if (FirstBounceN == vec3(0))
     {
-        vec2 UV = 2.0 * FragP.xy - 1.0;
-        UV += Delta * Rand2();
-        
-        vec3 Ro = CamP;
-        vec3 At = CamLookAt;
-        vec3 CamZ = normalize(At - Ro);
-        vec3 CamX = normalize(cross(vec3(0, 1, 0), CamZ));
-        vec3 CamY = cross(CamZ, CamX);
-        float CamZDist = 1.0 / tan(0.5 * FOV);
-        vec3 Rd = normalize(AspectRatio * CamX * UV.x + CamY * UV.y + CamZDist * CamZ);
-        
-        vec3 Radiance = vec3(0);
-        vec3 Attenuation = vec3(1);
-        vec3 L = normalize(vec3(0.5f, 2.4f, -0.5f));
-        vec3 SunRadiance = vec3(4.0);
-        
-        vec3 CurrRo = Ro;
-        vec3 CurrRd = Rd;
-        
+        Radiance = SampleEnvLight(CurrRd);
+    }
+    vec3 LSample = SampleCone(L, 6e-5);
+    float SunLightRatio = dot(LSample, FirstBounceN);
+    if (SunLightRatio > 0.0 && Raytrace(CurrRo, LSample).T == T_MAX)
+    {
+        Radiance += Attenuation*SunLightRatio*SunRadiance;
+    }
+    CurrRd = SampleHemisphere(FirstBounceN);
+#endif
+    
+#if 1
+    if (FirstBounceN != vec3(0))
+    {
+#endif
         for (int BounceIndex = 0; BounceIndex < MaxBounceCount; ++BounceIndex)
         {
             contact_info Hit = Raytrace(CurrRo, CurrRd);
             
             if (Hit.T > T_MIN && Hit.T < T_MAX)
             {
+                Radiance += Attenuation*Hit.Emission;
                 Attenuation *= Hit.Albedo;
+                
                 CurrRo = CurrRo + (Hit.T - T_MIN) * CurrRd;
                 
                 vec3 LSample = SampleCone(L, 6e-5);
@@ -456,18 +490,18 @@ void main()
             }
             else
             {
-                Radiance += Attenuation * SampleEnvLight(Rd);
+                Radiance += Attenuation * SampleEnvLight(CurrRd);
                 break;
             }
         }
-        
-        AvgRadiance += 1.0/float(SamplePerPixel) * Radiance;
+#if 1
     }
+#endif
     
     int SampleCount = SampleCountSoFar + 1;
     float CurrSampleWeight = 1.0 / float(SampleCount);
     vec3 PrevSamplesAvg = texture(PrevSamplesTex, FragP.xy).rgb;
     vec3 SamplesAvg = ((1.0 - CurrSampleWeight) * PrevSamplesAvg + 
-                       CurrSampleWeight * AvgRadiance);
+                       CurrSampleWeight * Radiance);
     FragColor = SamplesAvg;
 }

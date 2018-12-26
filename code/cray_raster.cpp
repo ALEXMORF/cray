@@ -21,7 +21,7 @@ inline void
 PushUniformMat4(gl_rasterizer *Rasterizer, char *Name, mat4 Mat)
 {
     glUniformMatrix4fv(glGetUniformLocation(Rasterizer->CurrentShader, Name), 
-                       16, GL_TRUE, (f32 *)Mat.Data);
+                       1, GL_TRUE, (f32 *)Mat.Data);
 }
 
 internal GLuint
@@ -104,12 +104,13 @@ MakeQuadVAO()
 }
 
 inline framebuffer
-InitFramebuffer(int Width, int Height)
+InitFramebuffer(int Width, int Height, int TexCount)
 {
     framebuffer Framebuffer = {};
+    Framebuffer.TexCount = TexCount;
     
-    glGenTextures(2, Framebuffer.TexHandles);
-    for (int TexIndex = 0; TexIndex < ARRAY_COUNT(Framebuffer.TexHandles); ++TexIndex)
+    glGenTextures(TexCount, Framebuffer.TexHandles);
+    for (int TexIndex = 0; TexIndex < TexCount; ++TexIndex)
     {
         glBindTexture(GL_TEXTURE_2D, Framebuffer.TexHandles[TexIndex]);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -135,7 +136,7 @@ InitFramebuffer(int Width, int Height)
                               GL_RENDERBUFFER, Framebuffer.RBOHandle);
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
     
-    for (int TexIndex = 0; TexIndex < ARRAY_COUNT(Framebuffer.TexHandles); ++TexIndex)
+    for (int TexIndex = 0; TexIndex < TexCount; ++TexIndex)
     {
         glBindTexture(GL_TEXTURE_2D, Framebuffer.TexHandles[TexIndex]);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + TexIndex,
@@ -151,6 +152,14 @@ InitFramebuffer(int Width, int Height)
 }
 
 internal void
+DeleteFramebuffer(framebuffer *Framebuffer)
+{
+    glDeleteFramebuffers(1, &Framebuffer->Handle);
+    glDeleteTextures(Framebuffer->TexCount, Framebuffer->TexHandles);
+    glDeleteRenderbuffers(1, &Framebuffer->RBOHandle);
+}
+
+internal void
 UseShader(gl_rasterizer *Rasterizer, GLuint Shader)
 {
     glUseProgram(Shader);
@@ -163,8 +172,10 @@ InitRasterizer(int Width, int Height)
     gl_rasterizer Rasterizer = {};
     Rasterizer.SampleShader = CompileShaderProgram("../code/fullscreen_vert.glsl", "../code/sample_frag.glsl");
     Rasterizer.BlitShader = CompileShaderProgram("../code/fullscreen_vert.glsl", "../code/blit_frag.glsl");
+    Rasterizer.GBufferPassShader = CompileShaderProgram("../code/geom_vert.glsl", "../code/gbuffer_frag.glsl");
     Rasterizer.QuadVAO = MakeQuadVAO();
-    Rasterizer.BackBuffer = InitFramebuffer(Width, Height);
+    Rasterizer.BackBuffer = InitFramebuffer(Width, Height, 2);
+    Rasterizer.GBuffer = InitFramebuffer(Width, Height, 4);
     
     Rasterizer.FOV = DegreeToRadian(45.0f);
     Rasterizer.Width = Width;
@@ -172,8 +183,7 @@ InitRasterizer(int Width, int Height)
     Rasterizer.LastBufferIndex = 0;
     Rasterizer.BufferIndex = 1;
     
-    Rasterizer.SamplePerPixel = 1;
-    Rasterizer.MaxBounceCount = 2;
+    Rasterizer.MaxBounceCount = 1;
     
     return Rasterizer;
 }
@@ -193,61 +203,107 @@ PrepareForRasterization(gl_rasterizer *Rasterizer, int Width, int Height)
         Rasterizer->Height != Height)
     {
         Refresh(Rasterizer);
-        glDeleteFramebuffers(1, &Rasterizer->BackBuffer.Handle);
-        glDeleteTextures(2, Rasterizer->BackBuffer.TexHandles);
-        glDeleteRenderbuffers(1, &Rasterizer->BackBuffer.RBOHandle);
+        DeleteFramebuffer(&Rasterizer->BackBuffer);
+        DeleteFramebuffer(&Rasterizer->GBuffer);
         
-        Rasterizer->BackBuffer = InitFramebuffer(Width, Height);
+        Rasterizer->BackBuffer = InitFramebuffer(Width, Height, Rasterizer->BackBuffer.TexCount);
+        Rasterizer->GBuffer = InitFramebuffer(Width, Height, Rasterizer->GBuffer.TexCount);
+        
         Rasterizer->Width = Width;
         Rasterizer->Height = Height;
     }
-    
-    glDisable(GL_DEPTH_TEST);
-    glViewport(0, 0, Width, Height);
-    
-    UseShader(Rasterizer, Rasterizer->SampleShader);
 }
 
 internal void
-Rasterize(gl_rasterizer *Rasterizer, GLuint GeometryVAO, mat4 View)
+Rasterize(gl_rasterizer *Rasterizer, scene *Scene, 
+          uploaded_data *Uploaded, f32 T)
 {
-    glBindFramebuffer(GL_FRAMEBUFFER, Rasterizer->BackBuffer.Handle);
-    glDrawBuffer(GL_COLOR_ATTACHMENT0 + Rasterizer->BufferIndex);
-    
     f32 AspectRatio = (f32)Rasterizer->Width / (f32)Rasterizer->Height;
-    PushUniformF32(Rasterizer, "AspectRatio", AspectRatio);
-    PushUniformF32(Rasterizer, "FOV", Rasterizer->FOV);
-    PushUniformI32(Rasterizer, "SamplePerPixel", Rasterizer->SamplePerPixel);
-    PushUniformI32(Rasterizer, "MaxBounceCount", Rasterizer->MaxBounceCount);
     
-    PushUniformMat4(Rasterizer, "View", View);
-    mat4 Projection = Mat4Perspective(Rasterizer->FOV, AspectRatio, 0.1f, 1000.0f);
-    PushUniformMat4(Rasterizer, "Projection", Projection);
-    
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, Rasterizer->BackBuffer.TexHandles[Rasterizer->LastBufferIndex]);
-    PushUniformI32(Rasterizer, "PrevSamplesTex", 0);
-    PushUniformI32(Rasterizer, "SampleCountSoFar", Rasterizer->SampleCountSoFar);
-    
-    //TODO(chen): pre-z test 
-    //TODO(chen): rasterize geometries instead of screen quad
-    glBindVertexArray(Rasterizer->QuadVAO);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    
-    //NOTE(chen): blit framebuffer onto default framebuffer
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    //NOTE(chen): G-buffer pass
     {
-        UseShader(Rasterizer, Rasterizer->BlitShader);
+        GLenum RenderTargets[] = {
+            GL_COLOR_ATTACHMENT0, 
+            GL_COLOR_ATTACHMENT1, 
+            GL_COLOR_ATTACHMENT2, 
+            GL_COLOR_ATTACHMENT3, 
+        };
+        
+        glBindFramebuffer(GL_FRAMEBUFFER, Rasterizer->GBuffer.Handle);
+        glDrawBuffers(ARRAY_COUNT(RenderTargets), RenderTargets);
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glEnable(GL_DEPTH_TEST);
+        glViewport(0, 0, Rasterizer->Width, Rasterizer->Height);
+        
+        UseShader(Rasterizer, Rasterizer->GBufferPassShader);
+        
+        mat4 View = Mat4LookAt(Scene->CamP, Scene->CamLookAt);
+        mat4 Projection = Mat4Perspective(Rasterizer->FOV, AspectRatio, 0.1f, 1000.0f);
+        
+        PushUniformMat4(Rasterizer, "View", View);
+        PushUniformMat4(Rasterizer, "Projection", Projection);
+        
+        glBindVertexArray(Uploaded->GeometryVAO);
+        glDrawArrays(GL_TRIANGLES, 0, Uploaded->GeometryVertexCount);
+    }
+    
+    //NOTE(chen): start sampling light
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, Rasterizer->BackBuffer.Handle);
+        glDrawBuffer(GL_COLOR_ATTACHMENT0 + Rasterizer->BufferIndex);
+        glDisable(GL_DEPTH_TEST);
+        glViewport(0, 0, Rasterizer->Width, Rasterizer->Height);
+        
+        UseShader(Rasterizer, Rasterizer->SampleShader);
+        
+        PushUniformI32(Rasterizer, "TriangleCount", Uploaded->TriangleCount);
+        PushUniformI32(Rasterizer, "BvhEntryCount", Uploaded->BvhEntryCount);
+        PushUniformF32(Rasterizer, "Time", T);
+        
+        PushUniformV3(Rasterizer, "CamP", Scene->CamP);
+        PushUniformV3(Rasterizer, "CamLookAt", Scene->CamLookAt);
+        
+        PushUniformF32(Rasterizer, "AspectRatio", AspectRatio);
+        PushUniformF32(Rasterizer, "FOV", Rasterizer->FOV);
+        PushUniformI32(Rasterizer, "MaxBounceCount", Rasterizer->MaxBounceCount);
         
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, Rasterizer->BackBuffer.TexHandles[Rasterizer->BufferIndex]);
-        PushUniformI32(Rasterizer, "HdrTex", 0);
+        glBindTexture(GL_TEXTURE_2D, Rasterizer->BackBuffer.TexHandles[Rasterizer->LastBufferIndex]);
+        PushUniformI32(Rasterizer, "PrevSamplesTex", 0);
+        PushUniformI32(Rasterizer, "SampleCountSoFar", Rasterizer->SampleCountSoFar);
+        
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, Rasterizer->GBuffer.TexHandles[0]);
+        PushUniformI32(Rasterizer, "PositionTex", 1);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, Rasterizer->GBuffer.TexHandles[1]);
+        PushUniformI32(Rasterizer, "NormalTex", 2);
+        glActiveTexture(GL_TEXTURE3);
+        glBindTexture(GL_TEXTURE_2D, Rasterizer->GBuffer.TexHandles[2]);
+        PushUniformI32(Rasterizer, "AlbedoTex", 3);
+        glActiveTexture(GL_TEXTURE4);
+        glBindTexture(GL_TEXTURE_2D, Rasterizer->GBuffer.TexHandles[3]);
+        PushUniformI32(Rasterizer, "EmissionTex", 4);
         
         glBindVertexArray(Rasterizer->QuadVAO);
         glDrawArrays(GL_TRIANGLES, 0, 6);
+        
+        //NOTE(chen): blit framebuffer onto default framebuffer
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        {
+            UseShader(Rasterizer, Rasterizer->BlitShader);
+            
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, Rasterizer->BackBuffer.TexHandles[Rasterizer->BufferIndex]);
+            PushUniformI32(Rasterizer, "HdrTex", 0);
+            
+            glBindVertexArray(Rasterizer->QuadVAO);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
+        
+        Rasterizer->SampleCountSoFar += 1;
+        Rasterizer->LastBufferIndex = Rasterizer->BufferIndex;
+        Rasterizer->BufferIndex = (Rasterizer->BufferIndex + 1) % Rasterizer->BackBuffer.TexCount;
     }
-    
-    Rasterizer->SampleCountSoFar += 1;
-    Rasterizer->LastBufferIndex = Rasterizer->BufferIndex;
-    Rasterizer->BufferIndex = (Rasterizer->BufferIndex + 1) % ARRAY_COUNT(Rasterizer->BackBuffer.TexHandles);
 }

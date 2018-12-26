@@ -13,6 +13,8 @@ struct packed_triangle
     f32 Pad4;
     v3 Albedo;
     f32 Pad5;
+    v3 Emission;
+    f32 Pad6;
 };
 #pragma pack(pop)
 
@@ -33,6 +35,7 @@ struct triangles
 struct uploaded_data
 {
     GLuint GeometryVAO;
+    int GeometryVertexCount;
     u64 TriangleCount;
     u64 BvhEntryCount;
 };

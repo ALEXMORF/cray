@@ -51,6 +51,7 @@ ConvertVerticesToTriangles(vertices Vertices)
         
         Triangle->N = Normalize(Vertices.Data[VertexCursor].N);
         Triangle->Albedo = Vertices.Data[VertexCursor].Albedo;
+        Triangle->Emission = Vertices.Data[VertexCursor].Emission;
         
         Triangle->A = Vertices.Data[VertexCursor++].P;
         Triangle->B = Vertices.Data[VertexCursor++].P;
@@ -97,6 +98,9 @@ UploadToVAO(vertices Vertices)
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 
                           sizeof(vertex), (void *)offsetof(vertex, Albedo));
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 
+                          sizeof(vertex), (void *)offsetof(vertex, Emission));
     
     glBindVertexArray(0);
     
@@ -123,19 +127,20 @@ UploadGeometryToGPU()
     
     int ModelCount = 0;
     obj_model Models[200] = {};
-    Models[ModelCount++] = InstantiateObjTemporarily("../data/buddha", Mat4Identity());
+    //Models[ModelCount++] = InstantiateObjTemporarily("../data/buddha", Mat4Identity());
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/head", HeadXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/dragon", DragonXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/bunny", BunnyXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/serapis", SerapisXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/monkey", MonkeyXForm);
-    //kModels[ModelCount++] = InstantiateObjTemporarily("../data/sphinx", SphinxXForm);
+    //Models[ModelCount++] = InstantiateObjTemporarily("../data/sphinx", SphinxXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/light_room", RoomXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/tiger", TigerXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/moose", MooseXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/bigmouth", BigMouthXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/big_scene", Mat4Identity());
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/sponza", Mat4Identity());
+    Models[ModelCount++] = InstantiateObjTemporarily("../data/conference", Mat4Identity());
     
     vertices Vertices = ConvertModelsToVertices(Models, ARRAY_COUNT(Models));
     triangles Triangles = ConvertVerticesToTriangles(Vertices);
@@ -150,6 +155,7 @@ UploadGeometryToGPU()
     BindSSBO(1, BVH.Data, BVH.Count*sizeof(bvh_entry));
     
     Uploaded.GeometryVAO = UploadToVAO(Vertices);
+    Uploaded.GeometryVertexCount = Vertices.Count;
     Uploaded.TriangleCount = Triangles.Count;
     Uploaded.BvhEntryCount = BVH.Count;
     

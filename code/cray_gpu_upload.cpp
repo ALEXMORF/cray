@@ -132,7 +132,7 @@ UploadGeometryToGPU()
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/dragon", DragonXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/bunny", BunnyXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/serapis", SerapisXForm);
-    Models[ModelCount++] = InstantiateObjTemporarily("../data/monkey", MonkeyXForm);
+    //Models[ModelCount++] = InstantiateObjTemporarily("../data/monkey", MonkeyXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/sphinx", SphinxXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/light_room", RoomXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/tiger", TigerXForm);

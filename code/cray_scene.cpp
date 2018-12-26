@@ -15,30 +15,33 @@ Interact(scene *Scene, input *Input, f32 dT)
 {
     scene_controller *Controller = &Scene->Controller;
     
-    //NOTE(chen): handle mouse dragging
-    if (Controller->CamIsBeingDragged)
+    if (!Input->MouseIsCaptured)
     {
-        if (!Input->MouseIsDown)
+        //NOTE(chen): handle mouse dragging
+        if (Controller->CamIsBeingDragged)
         {
-            Controller->CamIsBeingDragged = false;
-            Scene->CamOrientation = Controller->DraggedRotation * Scene->CamOrientation;
-            Controller->DraggedRotation = Quaternion();
+            if (!Input->MouseIsDown)
+            {
+                Controller->CamIsBeingDragged = false;
+                Scene->CamOrientation = Controller->DraggedRotation * Scene->CamOrientation;
+                Controller->DraggedRotation = Quaternion();
+            }
+            else
+            {
+                v2 MousedP = Input->MouseP - Controller->StartMouseP;
+                quaternion YRot = Quaternion(YAxis(), MousedP.X);
+                v3 LocalXAxis = Rotate(XAxis(), YRot * Scene->CamOrientation);
+                quaternion XRot = Quaternion(LocalXAxis, -MousedP.Y);
+                Controller->DraggedRotation = XRot * YRot;
+            }
         }
         else
         {
-            v2 MousedP = Input->MouseP - Controller->StartMouseP;
-            quaternion YRot = Quaternion(YAxis(), MousedP.X);
-            v3 LocalXAxis = Rotate(XAxis(), YRot * Scene->CamOrientation);
-            quaternion XRot = Quaternion(LocalXAxis, -MousedP.Y);
-            Controller->DraggedRotation = XRot * YRot;
-        }
-    }
-    else
-    {
-        if (Input->MouseIsDown)
-        {
-            Controller->CamIsBeingDragged = true;
-            Controller->StartMouseP = Input->MouseP;
+            if (Input->MouseIsDown)
+            {
+                Controller->CamIsBeingDragged = true;
+                Controller->StartMouseP = Input->MouseP;
+            }
         }
     }
     

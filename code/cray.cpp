@@ -1,4 +1,10 @@
+#include <imgui.h>
+#include <imgui.cpp>
+#include <imgui_draw.cpp>
+#include "gl_imgui.cpp"
+
 #include "cray.h"
+
 #include "cray_memory.cpp"
 #include "cray_obj.cpp"
 #include "cray_gpu_upload.cpp"
@@ -7,7 +13,6 @@
 
 /*TODO(chen):
 
-. UI for controlling renderer (max bounce count)
 . UI for controlling scene (sky light, sun light, sun direction, toggle ground plane)
 . UI toggle rasterization mode vs pure raytracing
 . UI toggle shadow map mode vs pure raytracing
@@ -62,6 +67,50 @@ OpenglCallback(GLenum Source, GLenum Type,
 }
 
 internal void
+ImGuiNewFrame(input *Input, int Width, int Height, f32 dT)
+{
+    ImGuiIO &IO = ImGui::GetIO();
+    
+    IO.DisplaySize.x = (f32)Width;
+    IO.DisplaySize.y = (f32)Height;
+    
+    IO.DeltaTime = dT;
+    IO.MousePos.x = (signed short)Input->MousePInPixels.X;
+    IO.MousePos.y = (signed short)Input->MousePInPixels.Y;
+    IO.MouseDown[0] = Input->MouseIsDown;
+    //IO.MouseDown[1] = Bool(Input->Mouse.RightDown);
+    //IO.KeyCtrl = Bool(Input->ControlKeyDown);
+    
+    for (int KeyCode = 0; KeyCode < ARRAY_COUNT(Input->Keys); ++KeyCode)
+    {
+        if (Input->Keys[KeyCode])
+        {
+            IO.KeysDown[KeyCode] = 1;
+        }
+        else
+        {
+            IO.KeysDown[KeyCode] = 0;
+        }
+    }
+    
+    ImGui::NewFrame();
+    
+    Input->KeyboardIsCaptured = IO.WantCaptureKeyboard;
+    Input->MouseIsCaptured = IO.WantCaptureMouse;
+}
+
+internal void
+ImGuiToggleBool(b32 *Boolean, char *Name)
+{
+    if (ImGui::Button(Name))
+    {
+        *Boolean = !*Boolean;
+    }
+    ImGui::SameLine();
+    ImGui::Text("%s", *Boolean? "true": "false");
+}
+
+internal void
 RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height)
 {
     ASSERT(sizeof(cray) <= Memory->Size);
@@ -81,10 +130,26 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height)
         CRay->Scene = InitScene();
         CRay->Uploaded = UploadGeometryToGPU();
         
+        InitImgui();
+        
         Memory->IsInitialized = true;
     }
     Clear(&GlobalTempArena);
     CRay->T += dT;
+    
+    ImGuiNewFrame(Input, Width, Height, dT);
+    
+    render_settings *Settings = &CRay->Rasterizer.Settings;
+    render_settings OldSettings = *Settings;
+    ImGui::Begin("Settings", 0, ImGuiWindowFlags_AlwaysAutoResize);
+    ImGuiToggleBool(&Settings->RasterizeFirstBounce, "Rasterize First Bounce");
+    ImGui::InputInt("Max Bounce Count", &Settings->MaxBounceCount);
+    ImGui::InputFloat("FOV", &Settings->FOV, 0.1f);
+    ImGui::End();
+    if (OldSettings != *Settings)
+    {
+        Refresh(&CRay->Rasterizer);
+    }
     
     v3 LastCamP = CRay->Scene.CamP;
     v3 LastCamLookAt = CRay->Scene.CamLookAt;
@@ -99,4 +164,6 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height)
     
     PrepareForRasterization(&CRay->Rasterizer, Width, Height);
     Rasterize(&CRay->Rasterizer, &CRay->Scene, &CRay->Uploaded, CRay->T);
+    
+    ImGui::Render();
 }

@@ -15,6 +15,17 @@ global_variable int GlobalWindowHeight;
 global_variable input GlobalInput;
 
 inline v2
+Win32GetMousePInPixels(LPARAM LParam)
+{
+    v2 MouseP = {};
+    
+    MouseP.X = (f32)GET_X_LPARAM(LParam);
+    MouseP.Y = (f32)GET_Y_LPARAM(LParam);
+    
+    return MouseP;
+}
+
+inline v2
 Win32GetNormalizedMouseP(HWND Window, LPARAM LParam)
 {
     v2 MouseP = {};
@@ -43,17 +54,20 @@ Win32WindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
         case WM_LBUTTONDOWN:
         {
             GlobalInput.MouseIsDown = true;
+            GlobalInput.MousePInPixels = Win32GetMousePInPixels(LParam);
             GlobalInput.MouseP = Win32GetNormalizedMouseP(Window, LParam);
         } break;
         
         case WM_LBUTTONUP:
         {
             GlobalInput.MouseIsDown = false;
+            GlobalInput.MousePInPixels = Win32GetMousePInPixels(LParam);
             GlobalInput.MouseP = Win32GetNormalizedMouseP(Window, LParam);
         } break;
         
         case WM_MOUSEMOVE:
         {
+            GlobalInput.MousePInPixels = Win32GetMousePInPixels(LParam);
             GlobalInput.MouseP = Win32GetNormalizedMouseP(Window, LParam);
         } break;
         

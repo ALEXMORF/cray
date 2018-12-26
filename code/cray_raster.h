@@ -9,12 +9,21 @@ struct framebuffer
     int TexCount;
 };
 
-struct gl_rasterizer
+struct render_settings
 {
     f32 FOV;
-    
     b32 RasterizeFirstBounce;
     int MaxBounceCount;
+};
+
+bool operator!=(render_settings A, render_settings B)
+{
+    return memcmp(&A, &B, sizeof(A)) != 0;
+}
+
+struct gl_rasterizer
+{
+    render_settings Settings;
     
     GLuint SampleShader;
     GLuint BlitShader;

@@ -183,14 +183,14 @@ InitRasterizer(int Width, int Height)
     Rasterizer.BackBuffer = InitFramebuffer(Width, Height, 2);
     Rasterizer.GBuffer = InitFramebuffer(Width, Height, 4);
     
-    Rasterizer.FOV = DegreeToRadian(45.0f);
     Rasterizer.Width = Width;
     Rasterizer.Height = Height;
     Rasterizer.LastBufferIndex = 0;
     Rasterizer.BufferIndex = 1;
     
-    Rasterizer.RasterizeFirstBounce = true;
-    Rasterizer.MaxBounceCount = 2;
+    Rasterizer.Settings.FOV = DegreeToRadian(45.0f);
+    Rasterizer.Settings.RasterizeFirstBounce = true;
+    Rasterizer.Settings.MaxBounceCount = 2;
     
     return Rasterizer;
 }
@@ -228,7 +228,7 @@ Rasterize(gl_rasterizer *Rasterizer, scene *Scene,
     f32 AspectRatio = (f32)Rasterizer->Width / (f32)Rasterizer->Height;
     
     //NOTE(chen): G-buffer pass
-    if (Rasterizer->RasterizeFirstBounce)
+    if (Rasterizer->Settings.RasterizeFirstBounce)
     {
         GLenum RenderTargets[] = {
             GL_COLOR_ATTACHMENT0, 
@@ -247,7 +247,8 @@ Rasterize(gl_rasterizer *Rasterizer, scene *Scene,
         UseShader(Rasterizer, Rasterizer->GBufferPassShader);
         
         mat4 View = Mat4LookAt(Scene->CamP, Scene->CamLookAt);
-        mat4 Projection = Mat4Perspective(Rasterizer->FOV, AspectRatio, 0.1f, 1000.0f);
+        mat4 Projection = Mat4Perspective(Rasterizer->Settings.FOV, 
+                                          AspectRatio, 0.1f, 1000.0f);
         
         PushUniformMat4(Rasterizer, "View", View);
         PushUniformMat4(Rasterizer, "Projection", Projection);
@@ -273,16 +274,16 @@ Rasterize(gl_rasterizer *Rasterizer, scene *Scene,
         PushUniformV3(Rasterizer, "CamLookAt", Scene->CamLookAt);
         
         PushUniformF32(Rasterizer, "AspectRatio", AspectRatio);
-        PushUniformF32(Rasterizer, "FOV", Rasterizer->FOV);
-        PushUniformI32(Rasterizer, "MaxBounceCount", Rasterizer->MaxBounceCount);
+        PushUniformF32(Rasterizer, "FOV", Rasterizer->Settings.FOV);
+        PushUniformI32(Rasterizer, "MaxBounceCount", Rasterizer->Settings.MaxBounceCount);
         
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, Rasterizer->BackBuffer.TexHandles[Rasterizer->LastBufferIndex]);
         PushUniformI32(Rasterizer, "PrevSamplesTex", 0);
         PushUniformI32(Rasterizer, "SampleCountSoFar", Rasterizer->SampleCountSoFar);
         
-        PushUniformB32(Rasterizer, "RasterizeFirstBounce", Rasterizer->RasterizeFirstBounce);
-        if (Rasterizer->RasterizeFirstBounce)
+        PushUniformB32(Rasterizer, "RasterizeFirstBounce", Rasterizer->Settings.RasterizeFirstBounce);
+        if (Rasterizer->Settings.RasterizeFirstBounce)
         {
             glActiveTexture(GL_TEXTURE1);
             glBindTexture(GL_TEXTURE_2D, Rasterizer->GBuffer.TexHandles[0]);

@@ -19,7 +19,11 @@ struct input
     b32 Keys[256];
     
     b32 MouseIsDown;
+    v2 MousePInPixels;
     v2 MouseP;
+    
+    b32 KeyboardIsCaptured;
+    b32 MouseIsCaptured;
 };
 
 struct cray

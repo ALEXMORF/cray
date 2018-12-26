@@ -1,6 +1,6 @@
 #pragma once
 
-#define OBJ_CACHE_VERSION 6
+#define OBJ_CACHE_VERSION 7
 
 struct material
 {

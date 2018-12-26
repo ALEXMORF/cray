@@ -66,40 +66,8 @@ Union(bound A, v3 P)
     return Bound;
 }
 
-inline v3
-CalcTriangleCentroid(packed_triangle Triangle)
-{
-    v3 Centroid = {};
-    
-    f32 U = 0.3333f;
-    f32 V = U;
-    
-    Centroid = U * Triangle.A + V * Triangle.B + (1.0f - U - V) * Triangle.C;
-    
-    return Centroid;
-}
-
-int ComparePrimitive(const void *DataA, const void *DataB)
-{
-    primitive *A = (primitive *)DataA;
-    primitive *B = (primitive *)DataB;
-    
-    if (A->Centroid.Data[GlobalPartitionAxis] < 
-        B->Centroid.Data[GlobalPartitionAxis])
-    {
-        return -1;
-    }
-    else if (A->Centroid.Data[GlobalPartitionAxis] > 
-             B->Centroid.Data[GlobalPartitionAxis])
-    {
-        return 1;
-    }
-    
-    return 0;
-}
-
-internal int
-PartitionLeftSAH(primitive *Prims, int StartIndex, int Count, 
+internal f32
+ChooseBestCutSAH(primitive *Prims, int StartIndex, int Count, 
                  axis Axis, f32 MinCentroid, f32 MaxCentroid, 
                  bound TotalBound)
 {
@@ -121,7 +89,7 @@ PartitionLeftSAH(primitive *Prims, int StartIndex, int Count,
         Buckets[OwnerBucketIndex].Bound = Union(Buckets[OwnerBucketIndex].Bound, Prims[PrimIndex].Bound);
     }
     
-    int MinCostLeftPrimCount = -1;
+    f32 Cut = -1.0f;
     f32 MinCost = 10e31;
     for (int CutIndex = 0; CutIndex < BucketCount-1; ++CutIndex)
     {
@@ -153,12 +121,33 @@ PartitionLeftSAH(primitive *Prims, int StartIndex, int Count,
         if (CutCost < MinCost)
         {
             MinCost = CutCost;
-            MinCostLeftPrimCount = LeftPrimCount;
+            Cut = MinCentroid + (f32)(CutIndex+1) * BucketInterval;
         }
     }
-    ASSERT(MinCostLeftPrimCount != -1);
+    ASSERT(Cut != -1.0f);
     
-    return MinCostLeftPrimCount;
+    return Cut;
+}
+
+internal int 
+Partition(primitive *Prims, int Count, f32 Cut, axis Axis)
+{
+    int LeftCount = 0;
+    
+    for (int PrimIndex = 0; PrimIndex < Count; ++PrimIndex)
+    {
+        if (Prims[PrimIndex].Centroid.Data[Axis] < Cut)
+        {
+            //NOTE(chen): swap Prims[PrimIndex] and Prims[LeftCount]
+            primitive CurrPrim = Prims[PrimIndex];
+            Prims[PrimIndex] = Prims[LeftCount];
+            Prims[LeftCount] = CurrPrim;
+            
+            LeftCount += 1;
+        }
+    }
+    
+    return LeftCount;
 }
 
 internal bvh_node *
@@ -200,14 +189,13 @@ ConstructBVH(primitive *Prims, int StartIndex, int Count, memory_arena *Arena)
     
     if (Count > 5 && MaxRange > 0.0f)
     {
-        GlobalPartitionAxis = PartitionAxis;
-        qsort(Prims+StartIndex, Count, sizeof(primitive), ComparePrimitive);
+        f32 Cut = ChooseBestCutSAH(Prims, StartIndex, Count, 
+                                   PartitionAxis, 
+                                   CentroidBound.Min.Data[PartitionAxis],
+                                   CentroidBound.Max.Data[PartitionAxis],
+                                   TotalBound);
         
-        int LeftCount = PartitionLeftSAH(Prims, StartIndex, Count, 
-                                         PartitionAxis, 
-                                         CentroidBound.Min.Data[PartitionAxis],
-                                         CentroidBound.Max.Data[PartitionAxis],
-                                         TotalBound);
+        int LeftCount = Partition(Prims+StartIndex, Count, Cut, PartitionAxis);
         int RightCount = Count - LeftCount;
         
         Node->PrimitiveCount = -1;
@@ -267,7 +255,7 @@ ConstructLinearBVH(packed_triangle *Triangles, int Count, memory_arena *Arena)
         primitive *Prim = Prims + PrimIndex;
         Prim->TriIndex = PrimIndex;
         Prim->Bound = BoundTriangle(Triangles[PrimIndex]);
-        Prim->Centroid = CalcTriangleCentroid(Triangles[PrimIndex]);
+        Prim->Centroid = 0.5f * Prim->Bound.Min + 0.5f * Prim->Bound.Max;
     }
     bvh_node *Root = ConstructBVH(Prims, 0, Count, &GlobalTempArena);
     

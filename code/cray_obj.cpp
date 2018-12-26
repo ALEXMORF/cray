@@ -483,11 +483,9 @@ LoadObj(char *Path, memory_arena *Arena)
     ASSERT(TempNormalCursor == TempNormalCount);
     ASSERT(VertexCursor == Result.VertexCount);
     
-#if 0
     char ObjCachePath[255];
     snprintf(ObjCachePath, sizeof(ObjCachePath), "%s.cache", Path);
     WriteObjCache(ObjCachePath, Result);
-#endif
     
     return Result;
 }

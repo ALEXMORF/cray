@@ -65,5 +65,3 @@ struct linear_bvh
     bvh_entry *Data;
     int Count;
 };
-
-global_variable axis GlobalPartitionAxis;

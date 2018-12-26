@@ -118,11 +118,13 @@ UploadGeometryToGPU()
     mat4 SphinxXForm = Mat4Scale(0.7f) * Mat4RotateAroundY(0.9f*Pi32) * Mat4Translate(0.0f, 0.0f, 1.0f);
     mat4 BunnyXForm = Mat4RotateAroundY(1.1f*Pi32) * Mat4Translate(0.0f, -0.1f, 0.0f);
     mat4 SerapisXForm = Mat4RotateAroundY(1.3f*Pi32) * Mat4Translate(0.0f, 0.0f, 0.0f);
-    mat4 DragonXForm = Mat4Translate(0.0f, 0.0f, 0.0f);
+    mat4 DragonXForm = Mat4Scale(2.0f);
+    mat4 HeadXForm = Mat4Scale(2.0f) * Mat4RotateAroundY(1.0f*Pi32);
     
     int ModelCount = 0;
     obj_model Models[200] = {};
-    Models[ModelCount++] = InstantiateObjTemporarily("../data/dragon", Mat4Identity());
+    Models[ModelCount++] = InstantiateObjTemporarily("../data/head", HeadXForm);
+    //Models[ModelCount++] = InstantiateObjTemporarily("../data/dragon", DragonXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/bunny", BunnyXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/serapis", SerapisXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/monkey", MonkeyXForm);

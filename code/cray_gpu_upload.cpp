@@ -123,7 +123,8 @@ UploadGeometryToGPU()
     
     int ModelCount = 0;
     obj_model Models[200] = {};
-    Models[ModelCount++] = InstantiateObjTemporarily("../data/head", HeadXForm);
+    Models[ModelCount++] = InstantiateObjTemporarily("../data/buddha", Mat4Identity());
+    //Models[ModelCount++] = InstantiateObjTemporarily("../data/head", HeadXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/dragon", DragonXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/bunny", BunnyXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/serapis", SerapisXForm);

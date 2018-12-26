@@ -8,7 +8,8 @@
 /*TODO(chen):
 
 . hardware rasterization for first bounce of light rays
-. Kd-tree partition for static scenes
+. Kd-tree partition for interior scenes
+. Use shadow map as direct light sampling instead of raytracing
 . Stackless traversal for BVH and Kd-tree
 . Model level partitioning
 . imgui for controlling renderer (sampling rate, max bounce count)

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define sscanf DUMB_FUCKING_GARBAGE
+#define sscanf DONT_USE_SSCANF_BAD_BAD
 
 internal char *
 ReadFileTemporarily(char *FilePath)
@@ -348,20 +348,22 @@ LoadObj(char *Path, memory_arena *Arena)
             {
                 material NewMat = {};
                 ParseString(MtlFileWalker, "newmtl", NewMat.Name);
-                
-                while (!StartsWith(MtlFileWalker, "Kd"))
-                {
-                    MtlFileWalker = GotoNextLine(MtlFileWalker);
-                }
-                ParseV3(MtlFileWalker, "Kd", &NewMat.Albedo);
-                
-                while (!StartsWith(MtlFileWalker, "Ke"))
-                {
-                    MtlFileWalker = GotoNextLine(MtlFileWalker);
-                }
-                ParseV3(MtlFileWalker, "Ke", &NewMat.Emission);
-                
                 Mats[MatCount++] = NewMat;
+            }
+            else if (StartsWith(MtlFileWalker, "Kd"))
+            {
+                ASSERT(MatCount > 0);
+                
+                v3 Albedo3 = {};
+                ParseV3(MtlFileWalker, "Kd", &Albedo3);
+                Mats[MatCount-1].Albedo.R = Albedo3.R;
+                Mats[MatCount-1].Albedo.G = Albedo3.G;
+                Mats[MatCount-1].Albedo.B = Albedo3.B;
+            }
+            else if (StartsWith(MtlFileWalker, "Ke"))
+            {
+                ASSERT(MatCount > 0);
+                ParseV3(MtlFileWalker, "Ke", &Mats[MatCount-1].Emission);
             }
             
             MtlFileWalker = GotoNextLine(MtlFileWalker);

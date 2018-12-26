@@ -13,6 +13,7 @@ struct gl_rasterizer
 {
     f32 FOV;
     
+    b32 RasterizeFirstBounce;
     int MaxBounceCount;
     
     GLuint SampleShader;

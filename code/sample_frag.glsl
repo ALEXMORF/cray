@@ -12,6 +12,7 @@ uniform sampler2D EmissionTex;
 uniform sampler2D PrevSamplesTex;
 uniform int SampleCountSoFar;
 
+uniform bool RasterizeFirstBounce;
 uniform int MaxBounceCount;
 
 uniform float FOV;
@@ -22,6 +23,8 @@ uniform float AspectRatio;
 
 uniform int TriangleCount;
 uniform int BvhEntryCount;
+
+vec3 SunRadiance = vec3(4.0);
 
 struct triangle
 {
@@ -96,6 +99,29 @@ void InitScene()
     Spheres[1].P = vec3(-1.1, 0.5, 0.0);
     Spheres[1].Radius = 0.5;
     Spheres[1].Albedo = vec3(0.2, 0.8, 0.2);
+}
+
+contact_info ReadGBuffer()
+{
+    contact_info Res;
+    
+    Res.Emission = texture(EmissionTex, FragP.xy).rgb;
+    Res.Albedo = texture(AlbedoTex, FragP.xy).rgb;
+    Res.N = texture(NormalTex, FragP.xy).xyz;
+    vec3 HitP = texture(PositionTex, FragP.xy).xyz;
+    HitP += (0.001 + T_MIN) * Res.N;
+    
+    if (Res.N != vec3(0))
+    {
+        Res.T = length(HitP - CamP);
+    }
+    else
+    {
+        //NOTE(chen): if N = 0, the ray misses
+        Res.T = -1.0; 
+    }
+    
+    return Res;
 }
 
 float RayIntersectSphere(in vec3 Ro, in vec3 Rd, float Radius)
@@ -416,6 +442,20 @@ vec3 SampleEnvLight(in vec3 Rd)
     return mix(Azimuth, Zenith, clamp(Rd.y, 0.0, 1.0));
 }
 
+vec3 SampleDirectLight(in vec3 Ro, in vec3 N, in vec3 L)
+{
+    vec3 Radiance = vec3(0);
+    
+    vec3 LSample = SampleCone(L, 6e-5);
+    float SunLightRatio = dot(LSample, N);
+    if (SunLightRatio > 0.0 && Raytrace(Ro, LSample).T == T_MAX)
+    {
+        Radiance += SunLightRatio*SunRadiance;
+    }
+    
+    return Radiance;
+}
+
 void main()
 {
     InitScene();
@@ -423,8 +463,11 @@ void main()
     vec3 AvgRadiance = vec3(0);
     
     vec2 UV = 2.0 * FragP.xy - 1.0;
-    vec2 Delta = vec2(dFdx(UV.x), dFdy(UV.y));
-    UV += Delta * Rand2();
+    if (!RasterizeFirstBounce)
+    {
+        vec2 Delta = vec2(dFdx(UV.x), dFdy(UV.y));
+        UV += Delta * Rand2();
+    }
     
     vec3 Ro = CamP;
     vec3 At = CamLookAt;
@@ -437,66 +480,36 @@ void main()
     vec3 Radiance = vec3(0);
     vec3 Attenuation = vec3(1);
     vec3 L = normalize(vec3(0.5f, 2.4f, -0.5f));
-    vec3 SunRadiance = vec3(4.0);
     
     vec3 CurrRo = Ro;
     vec3 CurrRd = Rd;
     
-#if 1
-    //NOTE(chen): use G-buffer as first bounce
-    Radiance += Attenuation * texture(EmissionTex, FragP.xy).rgb;
-    Attenuation *= texture(AlbedoTex, FragP.xy).rgb;
-    vec3 FirstBounceN = texture(NormalTex, FragP.xy).xyz;
-    vec3 FirstBounceP = texture(PositionTex, FragP.xy).xyz;
-    float FirstT = length(CurrRo - FirstBounceP);
-    CurrRo = CurrRo + (FirstT - T_MIN - 0.01) * CurrRd;
-    CurrRo += 10.0 * FirstBounceN * T_MIN;
-    if (FirstBounceN == vec3(0))
+    for (int BounceIndex = 0; BounceIndex < MaxBounceCount; ++BounceIndex)
     {
-        Radiance = SampleEnvLight(CurrRd);
-    }
-    vec3 LSample = SampleCone(L, 6e-5);
-    float SunLightRatio = dot(LSample, FirstBounceN);
-    if (SunLightRatio > 0.0 && Raytrace(CurrRo, LSample).T == T_MAX)
-    {
-        Radiance += Attenuation*SunLightRatio*SunRadiance;
-    }
-    CurrRd = SampleHemisphere(FirstBounceN);
-#endif
-    
-#if 1
-    if (FirstBounceN != vec3(0))
-    {
-#endif
-        for (int BounceIndex = 0; BounceIndex < MaxBounceCount; ++BounceIndex)
+        contact_info Hit;
+        if (BounceIndex == 0 && RasterizeFirstBounce)
         {
-            contact_info Hit = Raytrace(CurrRo, CurrRd);
-            
-            if (Hit.T > T_MIN && Hit.T < T_MAX)
-            {
-                Radiance += Attenuation*Hit.Emission;
-                Attenuation *= Hit.Albedo;
-                
-                CurrRo = CurrRo + (Hit.T - T_MIN) * CurrRd;
-                
-                vec3 LSample = SampleCone(L, 6e-5);
-                float SunLightRatio = dot(LSample, Hit.N);
-                if (SunLightRatio > 0.0 && Raytrace(CurrRo, LSample).T == T_MAX)
-                {
-                    Radiance += Attenuation*SunLightRatio*SunRadiance;
-                }
-                
-                CurrRd = SampleHemisphere(Hit.N);
-            }
-            else
-            {
-                Radiance += Attenuation * SampleEnvLight(CurrRd);
-                break;
-            }
+            Hit = ReadGBuffer();
         }
-#if 1
+        else
+        {
+            Hit = Raytrace(CurrRo, CurrRd);
+        }
+        
+        if (Hit.T > T_MIN && Hit.T < T_MAX)
+        {
+            Radiance += Attenuation*Hit.Emission;
+            Attenuation *= Hit.Albedo;
+            CurrRo = CurrRo + (Hit.T - T_MIN) * CurrRd;
+            Radiance += Attenuation * SampleDirectLight(CurrRo, Hit.N, L);
+            CurrRd = SampleHemisphere(Hit.N);
+        }
+        else
+        {
+            Radiance += Attenuation * SampleEnvLight(CurrRd);
+            break;
+        }
     }
-#endif
     
     int SampleCount = SampleCountSoFar + 1;
     float CurrSampleWeight = 1.0 / float(SampleCount);

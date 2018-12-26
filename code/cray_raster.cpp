@@ -5,6 +5,12 @@ PushUniformI32(gl_rasterizer *Rasterizer, char *Name, int Value)
 }
 
 inline void
+PushUniformB32(gl_rasterizer *Rasterizer, char *Name, b32 Value)
+{
+    glUniform1i(glGetUniformLocation(Rasterizer->CurrentShader, Name), Value);
+}
+
+inline void
 PushUniformF32(gl_rasterizer *Rasterizer, char *Name, f32 Value)
 {
     glUniform1f(glGetUniformLocation(Rasterizer->CurrentShader, Name), Value);
@@ -183,7 +189,8 @@ InitRasterizer(int Width, int Height)
     Rasterizer.LastBufferIndex = 0;
     Rasterizer.BufferIndex = 1;
     
-    Rasterizer.MaxBounceCount = 1;
+    Rasterizer.RasterizeFirstBounce = true;
+    Rasterizer.MaxBounceCount = 2;
     
     return Rasterizer;
 }
@@ -221,6 +228,7 @@ Rasterize(gl_rasterizer *Rasterizer, scene *Scene,
     f32 AspectRatio = (f32)Rasterizer->Width / (f32)Rasterizer->Height;
     
     //NOTE(chen): G-buffer pass
+    if (Rasterizer->RasterizeFirstBounce)
     {
         GLenum RenderTargets[] = {
             GL_COLOR_ATTACHMENT0, 
@@ -273,18 +281,22 @@ Rasterize(gl_rasterizer *Rasterizer, scene *Scene,
         PushUniformI32(Rasterizer, "PrevSamplesTex", 0);
         PushUniformI32(Rasterizer, "SampleCountSoFar", Rasterizer->SampleCountSoFar);
         
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, Rasterizer->GBuffer.TexHandles[0]);
-        PushUniformI32(Rasterizer, "PositionTex", 1);
-        glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, Rasterizer->GBuffer.TexHandles[1]);
-        PushUniformI32(Rasterizer, "NormalTex", 2);
-        glActiveTexture(GL_TEXTURE3);
-        glBindTexture(GL_TEXTURE_2D, Rasterizer->GBuffer.TexHandles[2]);
-        PushUniformI32(Rasterizer, "AlbedoTex", 3);
-        glActiveTexture(GL_TEXTURE4);
-        glBindTexture(GL_TEXTURE_2D, Rasterizer->GBuffer.TexHandles[3]);
-        PushUniformI32(Rasterizer, "EmissionTex", 4);
+        PushUniformB32(Rasterizer, "RasterizeFirstBounce", Rasterizer->RasterizeFirstBounce);
+        if (Rasterizer->RasterizeFirstBounce)
+        {
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, Rasterizer->GBuffer.TexHandles[0]);
+            PushUniformI32(Rasterizer, "PositionTex", 1);
+            glActiveTexture(GL_TEXTURE2);
+            glBindTexture(GL_TEXTURE_2D, Rasterizer->GBuffer.TexHandles[1]);
+            PushUniformI32(Rasterizer, "NormalTex", 2);
+            glActiveTexture(GL_TEXTURE3);
+            glBindTexture(GL_TEXTURE_2D, Rasterizer->GBuffer.TexHandles[2]);
+            PushUniformI32(Rasterizer, "AlbedoTex", 3);
+            glActiveTexture(GL_TEXTURE4);
+            glBindTexture(GL_TEXTURE_2D, Rasterizer->GBuffer.TexHandles[3]);
+            PushUniformI32(Rasterizer, "EmissionTex", 4);
+        }
         
         glBindVertexArray(Rasterizer->QuadVAO);
         glDrawArrays(GL_TRIANGLES, 0, 6);

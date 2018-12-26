@@ -135,12 +135,13 @@ UploadGeometryToGPU()
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/monkey", MonkeyXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/sphinx", SphinxXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/light_room", RoomXForm);
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/tiger", TigerXForm);
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/moose", MooseXForm);
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/bigmouth", BigMouthXForm);
+    Models[ModelCount++] = InstantiateObjTemporarily("../data/tiger", TigerXForm);
+    Models[ModelCount++] = InstantiateObjTemporarily("../data/moose", MooseXForm);
+    Models[ModelCount++] = InstantiateObjTemporarily("../data/bigmouth", BigMouthXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/big_scene", Mat4Identity());
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/sponza", Mat4Identity());
-    Models[ModelCount++] = InstantiateObjTemporarily("../data/conference", Mat4Identity());
+    //Models[ModelCount++] = InstantiateObjTemporarily("../data/conference", Mat4Identity());
+    //Models[ModelCount++] = InstantiateObjTemporarily("../data/sibenik", Mat4Identity());
     
     vertices Vertices = ConvertModelsToVertices(Models, ARRAY_COUNT(Models));
     triangles Triangles = ConvertVerticesToTriangles(Vertices);

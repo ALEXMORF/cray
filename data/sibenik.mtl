@@ -1,0 +1,173 @@
+# Blender MTL File: 'None'
+# Material Count: 15
+
+newmtl kamen_zid
+Ns 7.843137
+Ka 0.000000 0.000000 0.000000
+Kd 0.734118 0.730588 0.674118
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd C:\Users\ab109\Downloads\sibenik\kamen.png
+map_Bump C:\\Users\\ab109\\Downloads\\sibenik\\kamen-bump.png
+map_Ka C:\\Users\\ab109\\Downloads\\sibenik\\kamen.png
+
+newmtl kamen_zid_parapet
+Ns 7.843137
+Ka 0.000000 0.000000 0.000000
+Kd 0.734118 0.730588 0.674118
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd C:\Users\ab109\Downloads\sibenik\KAMEN-stup.png
+map_Ka C:\\Users\\ab109\\Downloads\\sibenik\\KAMEN-stup.png
+
+newmtl kamen_zid_prozor
+Ns 7.843137
+Ka 0.000000 0.000000 0.000000
+Kd 0.734118 0.730588 0.674118
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd C:\Users\ab109\Downloads\sibenik\kamen.png
+map_Bump C:\\Users\\ab109\\Downloads\\sibenik\\kamen-bump.png
+map_Ka C:\\Users\\ab109\\Downloads\\sibenik\\kamen.png
+
+newmtl pod
+Ns 7.843137
+Ka 0.000000 0.000000 0.000000
+Kd 0.734118 0.709412 0.674118
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd C:\Users\ab109\Downloads\sibenik\mramor6x6.png
+map_Bump C:\\Users\\ab109\\Downloads\\sibenik\\mramor6x6-bump.png
+map_Ka C:\\Users\\ab109\\Downloads\\sibenik\\mramor6x6.png
+
+newmtl pod_rub
+Ns 7.843137
+Ka 0.000000 0.000000 0.000000
+Kd 0.734118 0.730588 0.674118
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd C:\Users\ab109\Downloads\sibenik\kamen.png
+map_Bump C:\\Users\\ab109\\Downloads\\sibenik\\kamen-bump.png
+map_Ka C:\\Users\\ab109\\Downloads\\sibenik\\kamen.png
+
+newmtl pod_tepih
+Ns 7.843137
+Ka 0.000000 0.000000 0.000000
+Kd 1.000000 0.120000 0.100000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+
+newmtl rozeta
+Ns 7.843137
+Ka 0.000000 0.000000 0.000000
+Kd 0.734118 0.730588 0.674118
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd C:\Users\ab109\Downloads\sibenik\KAMEN-stup.png
+map_Ka C:\\Users\\ab109\\Downloads\\sibenik\\KAMEN-stup.png
+
+newmtl sprljci
+Ns 7.843137
+Ka 0.000000 0.000000 0.000000
+Kd 0.784314 0.784314 0.784314
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+
+newmtl staklo
+Ns 254.901961
+Ka 0.000000 0.000000 0.000000
+Kd 0.000000 0.000000 0.000000
+Ks 0.100000 0.100000 0.100000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 6
+
+newmtl staklo_crveno
+Ns 254.901961
+Ka 0.000000 0.000000 0.000000
+Kd 0.441176 0.103922 0.049020
+Ks 0.882353 0.207843 0.098039
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.800000
+illum 2
+
+newmtl staklo_plavo
+Ns 254.901961
+Ka 0.000000 0.000000 0.000000
+Kd 0.000000 0.000000 0.000000
+Ks 0.100000 0.100000 0.100000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 6
+
+newmtl staklo_zeleno
+Ns 254.901961
+Ka 0.000000 0.000000 0.000000
+Kd 0.000000 0.000000 0.000000
+Ks 0.100000 0.100000 0.100000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 6
+
+newmtl staklo_zuto
+Ns 254.901961
+Ka 0.000000 0.000000 0.000000
+Kd 0.000000 0.000000 0.000000
+Ks 0.100000 0.100000 0.100000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+
+newmtl stupovi
+Ns 7.843137
+Ka 0.000000 0.000000 0.000000
+Kd 0.734118 0.730588 0.674118
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd C:\Users\ab109\Downloads\sibenik\KAMEN-stup.png
+map_Ka C:\\Users\\ab109\\Downloads\\sibenik\\KAMEN-stup.png
+
+newmtl zid_vani
+Ns 7.843137
+Ka 0.000000 0.000000 0.000000
+Kd 0.734118 0.730588 0.674118
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd C:\Users\ab109\Downloads\sibenik\kamen.png
+map_Bump C:\\Users\\ab109\\Downloads\\sibenik\\kamen-bump.png
+map_Ka C:\\Users\\ab109\\Downloads\\sibenik\\kamen.png

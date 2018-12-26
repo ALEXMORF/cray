@@ -41,6 +41,14 @@ union v4
         f32 X, Y, Z, W;
     };
     
+    struct
+    {
+        f32 R;
+        f32 G;
+        f32 B;
+        f32 A;
+    };
+    
     f32 Data[4];
 };
 

@@ -7,15 +7,20 @@
 
 /*TODO(chen):
 
-. combat rasterization-based artifacts
-. Kd-tree partition for interior scenes
+. bake alpha into abledo (the A channel)
+. UI for controlling renderer (max bounce count)
+. UI for controlling scene (sky light, sun light, sun direction, toggle ground plane)
+. UI toggle rasterization mode vs pure raytracing
+. UI toggle shadow map mode vs pure raytracing
+. UI for profiling (speed for startup)
+. more compact BVH entry
+. Kd-tree 
+. Spatial split BVH: https://www.nvidia.com/docs/IO/77714/sbvh.pdf
 . Use shadow map as direct light sampling instead of raytracing 
 . don't use shadow map first first ray hits to preserve nice direct shadows
-. Stackless traversal for BVH and Kd-tree
-. more compact BVH entry
+. Stackless traversal
 . Model level partitioning
-. imgui for controlling renderer (sampling rate, max bounce count)
-. imgui for profiling (speed for everything)
+. anti-alias rasterized scenes
 . environment map
 . imgui for loading/unloading scenes
 . dynamically manipulate objects

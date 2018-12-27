@@ -187,10 +187,16 @@ InitRasterizer(int Width, int Height)
     Rasterizer.Height = Height;
     Rasterizer.LastBufferIndex = 0;
     Rasterizer.BufferIndex = 1;
+    Rasterizer.Exposure = 0.5f;
     
     Rasterizer.Settings.FOV = DegreeToRadian(45.0f);
     Rasterizer.Settings.RasterizeFirstBounce = true;
+    Rasterizer.Settings.EnableGroundPlane = false;
     Rasterizer.Settings.MaxBounceCount = 2;
+    Rasterizer.Settings.L = {0.5f, 2.4f, -0.5f};
+    Rasterizer.Settings.SunRadiance = V3(4.0f);
+    Rasterizer.Settings.Zenith = {0.0f, 0.44f, 2.66f};
+    Rasterizer.Settings.Azimuth = {1.0f, 1.4f, 1.6f};
     
     return Rasterizer;
 }
@@ -270,12 +276,17 @@ Rasterize(gl_rasterizer *Rasterizer, scene *Scene,
         PushUniformI32(Rasterizer, "BvhEntryCount", Uploaded->BvhEntryCount);
         PushUniformF32(Rasterizer, "Time", T);
         
-        PushUniformV3(Rasterizer, "CamP", Scene->CamP);
-        PushUniformV3(Rasterizer, "CamLookAt", Scene->CamLookAt);
-        
         PushUniformF32(Rasterizer, "AspectRatio", AspectRatio);
         PushUniformF32(Rasterizer, "FOV", Rasterizer->Settings.FOV);
         PushUniformI32(Rasterizer, "MaxBounceCount", Rasterizer->Settings.MaxBounceCount);
+        PushUniformB32(Rasterizer, "EnableGroundPlane", Rasterizer->Settings.EnableGroundPlane);
+        
+        PushUniformV3(Rasterizer, "CamP", Scene->CamP);
+        PushUniformV3(Rasterizer, "CamLookAt", Scene->CamLookAt);
+        PushUniformV3(Rasterizer, "L", Rasterizer->Settings.L);
+        PushUniformV3(Rasterizer, "SunRadiance", Rasterizer->Settings.SunRadiance);
+        PushUniformV3(Rasterizer, "Zenith", Rasterizer->Settings.Zenith);
+        PushUniformV3(Rasterizer, "Azimuth", Rasterizer->Settings.Azimuth);
         
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, Rasterizer->BackBuffer.TexHandles[Rasterizer->LastBufferIndex]);
@@ -306,6 +317,7 @@ Rasterize(gl_rasterizer *Rasterizer, scene *Scene,
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         {
             UseShader(Rasterizer, Rasterizer->BlitShader);
+            PushUniformF32(Rasterizer, "Exposure", Rasterizer->Exposure);
             
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, Rasterizer->BackBuffer.TexHandles[Rasterizer->BufferIndex]);

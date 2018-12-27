@@ -13,14 +13,11 @@
 
 /*TODO(chen):
 
-. UI for controlling scene (sky light, sun light, sun direction, toggle ground plane)
-. UI toggle rasterization mode vs pure raytracing
-. UI toggle shadow map mode vs pure raytracing
-. UI for profiling (speed for startup)
-. more compact BVH entry
 . Kd-tree 
+. Dynamically manage models
 . Spatial split BVH: https://www.nvidia.com/docs/IO/77714/sbvh.pdf
 . Use shadow map as direct light sampling instead of raytracing 
+. UI toggle shadow map mode vs pure raytracing
 . don't use shadow map first first ray hits to preserve nice direct shadows
 . Stackless traversal
 . Model level partitioning
@@ -130,6 +127,7 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height)
         CRay->Scene = InitScene();
         CRay->Uploaded = UploadGeometryToGPU();
         
+        CRay->ShowUI = true;
         InitImgui();
         
         Memory->IsInitialized = true;
@@ -139,25 +137,53 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height)
     
     ImGuiNewFrame(Input, Width, Height, dT);
     
-    render_settings *Settings = &CRay->Rasterizer.Settings;
-    render_settings OldSettings = *Settings;
-    ImGui::Begin("Settings", 0, ImGuiWindowFlags_AlwaysAutoResize);
-    ImGuiToggleBool(&Settings->RasterizeFirstBounce, "Rasterize First Bounce");
-    ImGui::InputInt("Max Bounce Count", &Settings->MaxBounceCount);
-    ImGui::InputFloat("FOV", &Settings->FOV, 0.1f);
-    ImGui::End();
-    if (OldSettings != *Settings)
+    if (Input->Keys['Q'])
     {
-        Refresh(&CRay->Rasterizer);
+        CRay->ShowUI = true;
+    }
+    
+    if (CRay->ShowUI)
+    {
+        ImGui::Begin("Profiles", 0, ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::Text("Model Loading time: %.3f seconds", CRay->Uploaded.ModelLoadingTime);
+        ImGui::Text("BVH Construction time: %.3f seconds", CRay->Uploaded.BvhConstructionTime);
+        ImGui::Text("Triangle Count: %d", CRay->Uploaded.TriangleCount);
+        ImGui::Text("Geometry Vertex Count: %d", CRay->Uploaded.GeometryVertexCount);
+        ImGui::Text("BVH Node Count: %d", CRay->Uploaded.BvhEntryCount);
+        ImGui::End();
+        
+        render_settings OldSettings = CRay->Rasterizer.Settings;
+        {
+            render_settings *Settings = &CRay->Rasterizer.Settings;
+            ImGui::Begin("Settings", 0, ImGuiWindowFlags_AlwaysAutoResize);
+            ImGuiToggleBool(&Settings->RasterizeFirstBounce, "Rasterize First Bounce");
+            ImGuiToggleBool(&Settings->EnableGroundPlane, "Enable Ground Plane");
+            ImGui::InputInt("Max Bounce Count", &Settings->MaxBounceCount);
+            ImGui::InputFloat("FOV", &Settings->FOV, 0.1f);
+            ImGui::DragFloat3("L", (f32 *)&Settings->L, 0.1f);
+            ImGui::DragFloat3("Sun Radiance", (f32 *)&Settings->SunRadiance, 0.1f);
+            ImGui::DragFloat3("Zenith", (f32 *)&Settings->Zenith, 0.1f);
+            ImGui::DragFloat3("Azimuth", (f32 *)&Settings->Azimuth, 0.1f);
+            ImGui::Separator();
+            ImGui::DragFloat("Exposure", &CRay->Rasterizer.Exposure, 0.01f);
+            if (ImGui::Button("Hide UI"))
+            {
+                CRay->ShowUI = false;
+            }
+            
+            ImGui::End();
+        }
+        if (OldSettings != CRay->Rasterizer.Settings)
+        {
+            Refresh(&CRay->Rasterizer);
+        }
     }
     
     v3 LastCamP = CRay->Scene.CamP;
     v3 LastCamLookAt = CRay->Scene.CamLookAt;
     Interact(&CRay->Scene, Input, dT);
-    
-    b32 SceneIsDisturbed = (LastCamP != CRay->Scene.CamP ||
-                            LastCamLookAt != CRay->Scene.CamLookAt);
-    if (SceneIsDisturbed)
+    if (LastCamP != CRay->Scene.CamP ||
+        LastCamLookAt != CRay->Scene.CamLookAt)
     {
         Refresh(&CRay->Rasterizer);
     }

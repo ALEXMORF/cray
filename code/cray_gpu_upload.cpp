@@ -107,6 +107,12 @@ UploadToVAO(vertices Vertices)
     return VAO;
 }
 
+inline f32
+CalcSecondsPassed(clock_t BeginClock)
+{
+    return (f32)(clock() - BeginClock) / (f32)CLOCKS_PER_SEC;
+}
+
 #include "cray_bvh.cpp"
 
 internal uploaded_data
@@ -125,6 +131,8 @@ UploadGeometryToGPU()
     mat4 DragonXForm = Mat4Scale(2.0f);
     mat4 HeadXForm = Mat4Scale(2.0f) * Mat4RotateAroundY(1.0f*Pi32);
     
+    clock_t BeginClock = clock();
+    
     int ModelCount = 0;
     obj_model Models[200] = {};
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/buddha", Mat4Identity());
@@ -132,7 +140,7 @@ UploadGeometryToGPU()
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/dragon", DragonXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/bunny", BunnyXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/serapis", SerapisXForm);
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/monkey", MonkeyXForm);
+    Models[ModelCount++] = InstantiateObjTemporarily("../data/monkey", MonkeyXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/sphinx", SphinxXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/light_room", RoomXForm);
     //Models[ModelCount++] = InstantiateObjTemporarily("../data/tiger", TigerXForm);
@@ -146,12 +154,17 @@ UploadGeometryToGPU()
     vertices Vertices = ConvertModelsToVertices(Models, ARRAY_COUNT(Models));
     triangles Triangles = ConvertVerticesToTriangles(Vertices);
     
+    Uploaded.ModelLoadingTime = CalcSecondsPassed(BeginClock);
+    
+    BeginClock = clock();
     //NOTE(chen): BVH modifies the triangle array, therefore 
     //            triangles' SSBO binding must happen after 
     //            BVH's construction
     linear_bvh BVH = ConstructLinearBVH(Triangles.Data, 
                                         Triangles.Count, 
                                         &GlobalTempArena);
+    Uploaded.BvhConstructionTime = CalcSecondsPassed(BeginClock);
+    
     BindSSBO(0, Triangles.Data, Triangles.Count*sizeof(packed_triangle));
     BindSSBO(1, BVH.Data, BVH.Count*sizeof(bvh_entry));
     

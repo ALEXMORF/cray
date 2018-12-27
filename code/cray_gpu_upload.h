@@ -1,4 +1,5 @@
 #pragma once
+#include <time.h>
 
 #pragma pack(push, 1)
 struct packed_triangle
@@ -38,4 +39,7 @@ struct uploaded_data
     int GeometryVertexCount;
     u64 TriangleCount;
     u64 BvhEntryCount;
+    
+    f32 ModelLoadingTime;
+    f32 BvhConstructionTime;
 };

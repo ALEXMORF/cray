@@ -14,6 +14,12 @@ struct render_settings
     f32 FOV;
     b32 RasterizeFirstBounce;
     int MaxBounceCount;
+    b32 EnableGroundPlane;
+    
+    v3 L;
+    v3 SunRadiance;
+    v3 Zenith;
+    v3 Azimuth;
 };
 
 bool operator!=(render_settings A, render_settings B)
@@ -24,6 +30,7 @@ bool operator!=(render_settings A, render_settings B)
 struct gl_rasterizer
 {
     render_settings Settings;
+    f32 Exposure;
     
     GLuint SampleShader;
     GLuint BlitShader;

@@ -1,5 +1,6 @@
 #version 440 core
 
+uniform float Exposure;
 uniform sampler2D HdrTex;
 
 in vec3 FragP;
@@ -9,7 +10,7 @@ void main()
 {
     vec3 Radiance = texture(HdrTex, FragP.xy).rgb;
     
-    float Exposure = 0.5;
+    //float Exposure = 0.5;
     Radiance = 1.0-exp(-Exposure*Radiance);
     Radiance = sqrt(Radiance);
     

@@ -33,6 +33,7 @@ struct cray
     uploaded_data Uploaded;
     scene Scene;
     
+    b32 ShowUI;
     float T;
 };
 

@@ -14,17 +14,20 @@ uniform int SampleCountSoFar;
 
 uniform bool RasterizeFirstBounce;
 uniform int MaxBounceCount;
+uniform bool EnableGroundPlane;
 
 uniform float FOV;
 uniform vec3 CamP;
 uniform vec3 CamLookAt;
+uniform vec3 L;
+uniform vec3 SunRadiance;
+uniform vec3 Zenith;
+uniform vec3 Azimuth;
 uniform float Time;
 uniform float AspectRatio;
 
 uniform int TriangleCount;
 uniform int BvhEntryCount;
-
-vec3 SunRadiance = vec3(4.0);
 
 struct triangle
 {
@@ -85,21 +88,6 @@ struct contact_info
     vec3 Albedo;
     vec3 Emission;
 };
-
-#define SPHERE_COUNT 2
-
-sphere Spheres[2];
-
-void InitScene()
-{
-    Spheres[0].P = vec3(1.1, 0.5, 0.0);
-    Spheres[0].Radius = 0.5;
-    Spheres[0].Albedo = vec3(0.8, 0.2, 0.2);
-    
-    Spheres[1].P = vec3(-1.1, 0.5, 0.0);
-    Spheres[1].Radius = 0.5;
-    Spheres[1].Albedo = vec3(0.2, 0.8, 0.2);
-}
 
 contact_info ReadGBuffer()
 {
@@ -234,39 +222,35 @@ float RayIntersectBound(in vec3 Ro, in vec3 Rd, in vec3 Bound[2])
     return max(MinT, MinTZ);
 }
 
+contact_info RaytraceGroundPlane(in vec3 Ro, in vec3 Rd)
+{
+    contact_info Hit;
+    
+    Hit.T = RayIntersectPlane(Ro, Rd, vec3(0,1,0), 0);
+    Hit.Albedo = vec3(0.5);
+    Hit.N = vec3(0, 1, 0);
+    Hit.Emission = vec3(0);
+    
+    return Hit;
+}
+
 contact_info Raytrace(in vec3 Ro, in vec3 Rd)
 {
     contact_info Res;
     Res.T = T_MAX;
     Res.Emission = vec3(0);
     
-#if 0
-    // spheres
-    for (int SphereIndex = 0; SphereIndex < SPHERE_COUNT; ++SphereIndex)
-    {
-        sphere Sphere = Spheres[SphereIndex];
-        float T = RayIntersectSphere(Ro - Sphere.P, Rd, Sphere.Radius);
-        if (T > T_MIN && T < Res.T)
-        {
-            Res.T = T;
-            Res.Albedo = Sphere.Albedo;
-            Res.N = normalize(Ro + T * Rd - Sphere.P);
-        }
-    }
-#endif
-    
-#if 0
     // plane
+    if (EnableGroundPlane)
     {
-        float T = RayIntersectPlane(Ro, Rd, vec3(0,1,0), 0);
-        if (T > T_MIN && T < Res.T)
+        contact_info Hit = RaytraceGroundPlane(Ro, Rd);
+        if (Hit.T > T_MIN && Hit.T < Res.T)
         {
-            Res.T = T;
-            Res.Albedo = vec3(0.6);
-            Res.N = vec3(0, 1, 0);
+            Res.T = Hit.T;
+            Res.Albedo = Hit.Albedo;
+            Res.N = Hit.N;
         }
     }
-#endif
     
     int ToVisitOffset = 0;
     int NodesToVisit[32];
@@ -437,8 +421,6 @@ vec3 SampleCone(in vec3 N, in float Extent)
 
 vec3 SampleEnvLight(in vec3 Rd)
 {
-    vec3 Zenith = vec3(0.0, 0.44, 2.66);
-    vec3 Azimuth = vec3(1.0, 1.4, 1.6);
     return mix(Azimuth, Zenith, clamp(Rd.y, 0.0, 1.0));
 }
 
@@ -458,15 +440,13 @@ vec3 SampleDirectLight(in vec3 Ro, in vec3 N, in vec3 L)
 
 void main()
 {
-    InitScene();
-    
     vec3 AvgRadiance = vec3(0);
     
     vec2 UV = 2.0 * FragP.xy - 1.0;
     if (!RasterizeFirstBounce)
     {
         vec2 Delta = vec2(dFdx(UV.x), dFdy(UV.y));
-        UV += Delta * Rand2();
+        UV += Delta * (Rand2() - 0.5);
     }
     
     vec3 Ro = CamP;
@@ -479,7 +459,6 @@ void main()
     
     vec3 Radiance = vec3(0);
     vec3 Attenuation = vec3(1);
-    vec3 L = normalize(vec3(0.5f, 2.4f, -0.5f));
     
     vec3 CurrRo = Ro;
     vec3 CurrRd = Rd;
@@ -490,6 +469,14 @@ void main()
         if (BounceIndex == 0 && RasterizeFirstBounce)
         {
             Hit = ReadGBuffer();
+            if (EnableGroundPlane)
+            {
+                contact_info GroundHit = RaytraceGroundPlane(CurrRo, CurrRd);
+                if (GroundHit.T > T_MIN && (Hit.T < T_MIN || GroundHit.T < Hit.T))
+                {
+                    Hit = GroundHit;
+                }
+            }
         }
         else
         {

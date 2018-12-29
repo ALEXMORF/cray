@@ -432,7 +432,7 @@ vec3 SampleDirectLight(in vec3 Ro, in vec3 N, in vec3 L)
     float SunLightRatio = dot(LSample, N);
     if (SunLightRatio > 0.0 && Raytrace(Ro, LSample).T == T_MAX)
     {
-        Radiance += SunLightRatio*SunRadiance;
+        Radiance = SunLightRatio*SunRadiance;
     }
     
     return Radiance;
@@ -488,6 +488,7 @@ void main()
             Radiance += Attenuation*Hit.Emission;
             Attenuation *= Hit.Albedo;
             CurrRo = CurrRo + (Hit.T - T_MIN) * CurrRd;
+            
             Radiance += Attenuation * SampleDirectLight(CurrRo, Hit.N, L);
             CurrRd = SampleHemisphere(Hit.N);
         }

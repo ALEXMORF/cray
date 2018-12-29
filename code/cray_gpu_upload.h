@@ -36,6 +36,8 @@ struct triangles
 struct uploaded_data
 {
     GLuint GeometryVAO;
+    GLuint TrianglesSSBO;
+    GLuint BvhSSBO;
     int GeometryVertexCount;
     u64 TriangleCount;
     u64 BvhEntryCount;

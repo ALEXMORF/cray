@@ -61,7 +61,7 @@ ConvertVerticesToTriangles(vertices Vertices)
     return Result;
 }
 
-internal void
+internal GLuint
 BindSSBO(int BindingIndex, void *Data, int Size)
 {
     //NOTE(chen): upload triangles onto SSBO
@@ -71,6 +71,8 @@ BindSSBO(int BindingIndex, void *Data, int Size)
     glBufferData(GL_SHADER_STORAGE_BUFFER, Size, Data, GL_STATIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BindingIndex, SSBO);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); 
+    
+    return SSBO;
 }
 
 internal GLuint 
@@ -104,6 +106,8 @@ UploadToVAO(vertices Vertices)
     
     glBindVertexArray(0);
     
+    glDeleteBuffers(1, &VBO);
+    
     return VAO;
 }
 
@@ -116,40 +120,15 @@ CalcSecondsPassed(clock_t BeginClock)
 #include "cray_bvh.cpp"
 
 internal uploaded_data
-UploadGeometryToGPU()
+UploadGeometryToGPU(char *ObjPath, mat4 XForm)
 {
     uploaded_data Uploaded = {};
-    
-    mat4 MonkeyXForm = Mat4Scale(0.5f) * Mat4RotateAroundY(Pi32) * Mat4Translate(0.0f, 0.6f, 0.0f);
-    mat4 RoomXForm = Mat4RotateAroundY(Pi32) * Mat4Translate(0.0f, 0.0f, 4.0f);
-    mat4 TigerXForm = Mat4RotateAroundY(1.15f*Pi32) * Mat4Translate(0.0f, 0.3f, 0.0f);
-    mat4 MooseXForm = Mat4RotateAroundY(0.2f*Pi32) * Mat4Translate(1.0f, -0.02f, 0.0f);
-    mat4 BigMouthXForm = Mat4RotateAroundY(0.7f*Pi32) * Mat4Translate(-1.0f, 0.0f, 0.0f);
-    mat4 SphinxXForm = Mat4Scale(0.7f) * Mat4RotateAroundY(0.9f*Pi32) * Mat4Translate(0.0f, 0.0f, 1.0f);
-    mat4 BunnyXForm = Mat4RotateAroundY(1.1f*Pi32) * Mat4Translate(0.0f, -0.1f, 0.0f);
-    mat4 SerapisXForm = Mat4RotateAroundY(1.3f*Pi32) * Mat4Translate(0.0f, 0.0f, 0.0f);
-    mat4 DragonXForm = Mat4Scale(2.0f);
-    mat4 HeadXForm = Mat4Scale(2.0f) * Mat4RotateAroundY(1.0f*Pi32);
     
     clock_t BeginClock = clock();
     
     int ModelCount = 0;
     obj_model Models[200] = {};
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/buddha", Mat4Identity());
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/head", HeadXForm);
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/dragon", DragonXForm);
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/bunny", BunnyXForm);
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/serapis", SerapisXForm);
-    Models[ModelCount++] = InstantiateObjTemporarily("../data/monkey", MonkeyXForm);
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/sphinx", SphinxXForm);
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/light_room", RoomXForm);
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/tiger", TigerXForm);
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/moose", MooseXForm);
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/bigmouth", BigMouthXForm);
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/big_scene", Mat4Identity());
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/sponza", Mat4Identity());
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/conference", Mat4Identity());
-    //Models[ModelCount++] = InstantiateObjTemporarily("../data/sibenik", Mat4Identity());
+    Models[ModelCount++] = InstantiateObjTemporarily(ObjPath, XForm);
     
     vertices Vertices = ConvertModelsToVertices(Models, ARRAY_COUNT(Models));
     triangles Triangles = ConvertVerticesToTriangles(Vertices);
@@ -165,13 +144,26 @@ UploadGeometryToGPU()
                                         &GlobalTempArena);
     Uploaded.BvhConstructionTime = CalcSecondsPassed(BeginClock);
     
-    BindSSBO(0, Triangles.Data, Triangles.Count*sizeof(packed_triangle));
-    BindSSBO(1, BVH.Data, BVH.Count*sizeof(bvh_entry));
-    
     Uploaded.GeometryVAO = UploadToVAO(Vertices);
+    Uploaded.TrianglesSSBO = BindSSBO(0, Triangles.Data, Triangles.Count*sizeof(packed_triangle));
+    Uploaded.BvhSSBO = BindSSBO(1, BVH.Data, BVH.Count*sizeof(bvh_entry));
     Uploaded.GeometryVertexCount = Vertices.Count;
     Uploaded.TriangleCount = Triangles.Count;
     Uploaded.BvhEntryCount = BVH.Count;
     
     return Uploaded;
+}
+
+internal uploaded_data
+UploadGeometryToGPU(model_prefab Prefab)
+{
+    return UploadGeometryToGPU(Prefab.Path, Prefab.XForm);
+}
+
+internal void
+FreeUploadedData(uploaded_data Data)
+{
+    glDeleteVertexArrays(1, &Data.GeometryVAO);
+    glDeleteBuffers(1, &Data.TrianglesSSBO);
+    glDeleteBuffers(1, &Data.BvhSSBO);
 }

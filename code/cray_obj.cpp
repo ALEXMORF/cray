@@ -202,6 +202,30 @@ ParseString(char *Cursor, char *Prefix, char *Buffer_Out)
 }
 
 inline char *
+ReadInteger(char *Str, i32 *Integer_Out)
+{
+    char *Cursor = Str;
+    Cursor = SkipSpaces(Cursor);
+    
+    int Sign = 1;
+    if (*Cursor == '-')
+    {
+        Sign = -1;
+        Cursor += 1;
+    }
+    
+    int Integer = 0;
+    while (*Cursor >= '0' && *Cursor <= '9')
+    {
+        int Digit = *Cursor++ - '0';
+        Integer = Integer * 10 + Digit;
+    }
+    
+    *Integer_Out = Sign * Integer;
+    return Cursor;
+}
+
+inline char *
 ReadFloat(char *Str, f32 *Float_Out)
 {
     char *Cursor = Str;
@@ -236,31 +260,18 @@ ReadFloat(char *Str, f32 *Float_Out)
         }
     }
     
-    *Float_Out = Sign * ((f32)WholeNum + DeciNum);
-    return Cursor;
-}
-
-inline char *
-ReadInteger(char *Str, i32 *Integer_Out)
-{
-    char *Cursor = Str;
-    Cursor = SkipSpaces(Cursor);
-    
-    int Sign = 1;
-    if (*Cursor == '-')
+    //NOTE(chen): scientific notation
+    f32 E = 1.0f;
+    if (*Cursor == 'e' || *Cursor == 'E')
     {
-        Sign = -1;
         Cursor += 1;
+        
+        int Exponent = 0;
+        Cursor = ReadInteger(Cursor, &Exponent);
+        E = powf(10.0f, (f32)Exponent);
     }
     
-    int Integer = 0;
-    while (*Cursor >= '0' && *Cursor <= '9')
-    {
-        int Digit = *Cursor++ - '0';
-        Integer = Integer * 10 + Digit;
-    }
-    
-    *Integer_Out = Sign * Integer;
+    *Float_Out = Sign * ((f32)WholeNum + DeciNum) * E;
     return Cursor;
 }
 
@@ -323,6 +334,7 @@ LoadObj(char *Path, memory_arena *Arena)
 {
     obj_model Result = {};
     
+#if 0
     //NOTE(chen): check for cache
     {
         char ObjCachePath[255];
@@ -340,13 +352,14 @@ LoadObj(char *Path, memory_arena *Arena)
             }
         }
     }
+#endif
     
     char MtlPath[255];
     snprintf(MtlPath, sizeof(MtlPath), "%s.mtl", Path);
     char ObjPath[255];
     snprintf(ObjPath, sizeof(ObjPath), "%s.obj", Path);
     
-    material Mats[100] = {};
+    material Mats[200] = {};
     int MatCount = 0;
     
     char *MtlFileContent = ReadFileTemporarily(MtlPath);
@@ -360,6 +373,7 @@ LoadObj(char *Path, memory_arena *Arena)
             {
                 material NewMat = {};
                 ParseString(MtlFileWalker, "newmtl", NewMat.Name);
+                ASSERT(MatCount < ARRAY_COUNT(Mats));
                 Mats[MatCount++] = NewMat;
             }
             else if (StartsWith(MtlFileWalker, "Kd"))
@@ -444,6 +458,7 @@ LoadObj(char *Path, memory_arena *Arena)
             //NOTE(chen): discards faces with alpha less than 1
             b32 FaceIsTransparent = (CurrentMatIndex != -1 &&
                                      Mats[CurrentMatIndex].Albedo.A < 0.9f);
+            FaceIsTransparent = false;
             
             if (!FaceIsTransparent)
             {
@@ -460,6 +475,13 @@ LoadObj(char *Path, memory_arena *Arena)
                     {
                         VertexIndices[VI] += TempVertexCount;
                     }
+                    else
+                    {
+                        //NOTE(chen): OBJ is 1-based, making it 0-based
+                        VertexIndices[VI] -= 1;
+                    }
+                    
+                    //NOTE(chen): negative index wraps
                     if (NormalIndices[VI] < 0)
                     {
                         NormalIndices[VI] += TempNormalCount;
@@ -467,9 +489,9 @@ LoadObj(char *Path, memory_arena *Arena)
                     else
                     {
                         //NOTE(chen): OBJ is 1-based, making it 0-based
-                        VertexIndices[VI] -= 1;
                         NormalIndices[VI] -= 1;
                     }
+                    
                     ASSERT(VertexIndices[VI] >= 0 && VertexIndices[VI] < TempVertexCount);
                     ASSERT(NormalIndices[VI] >= 0 && NormalIndices[VI] < TempNormalCount);
                     
@@ -523,9 +545,11 @@ LoadObj(char *Path, memory_arena *Arena)
     ASSERT(VertexCursor + AlphaVertexCount == Result.VertexCount);
     Result.VertexCount -= AlphaVertexCount;
     
+#if 0
     char ObjCachePath[255];
     snprintf(ObjCachePath, sizeof(ObjCachePath), "%s.cache", Path);
     WriteObjCache(ObjCachePath, Result);
+#endif
     
     return Result;
 }

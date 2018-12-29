@@ -190,10 +190,10 @@ InitRasterizer(int Width, int Height)
     Rasterizer.Exposure = 0.5f;
     
     Rasterizer.Settings.FOV = DegreeToRadian(45.0f);
-    Rasterizer.Settings.RasterizeFirstBounce = true;
-    Rasterizer.Settings.EnableGroundPlane = false;
-    Rasterizer.Settings.MaxBounceCount = 2;
-    Rasterizer.Settings.L = {0.5f, 2.4f, -0.5f};
+    Rasterizer.Settings.RasterizeFirstBounce = false;
+    Rasterizer.Settings.EnableGroundPlane = true;
+    Rasterizer.Settings.MaxBounceCount = 1;
+    Rasterizer.Settings.L = {0.5f, 0.4f, -0.5f};
     Rasterizer.Settings.SunRadiance = V3(4.0f);
     Rasterizer.Settings.Zenith = {0.0f, 0.44f, 2.66f};
     Rasterizer.Settings.Azimuth = {1.0f, 1.4f, 1.6f};
@@ -283,7 +283,7 @@ Rasterize(gl_rasterizer *Rasterizer, scene *Scene,
         
         PushUniformV3(Rasterizer, "CamP", Scene->CamP);
         PushUniformV3(Rasterizer, "CamLookAt", Scene->CamLookAt);
-        PushUniformV3(Rasterizer, "L", Rasterizer->Settings.L);
+        PushUniformV3(Rasterizer, "L", Normalize(Rasterizer->Settings.L));
         PushUniformV3(Rasterizer, "SunRadiance", Rasterizer->Settings.SunRadiance);
         PushUniformV3(Rasterizer, "Zenith", Rasterizer->Settings.Zenith);
         PushUniformV3(Rasterizer, "Azimuth", Rasterizer->Settings.Azimuth);

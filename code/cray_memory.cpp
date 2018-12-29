@@ -1,5 +1,5 @@
 internal memory_arena
-InitMemoryArena(void *Memory, int Size)
+InitMemoryArena(void *Memory, size_t Size)
 {
     memory_arena Arena = {};
     
@@ -20,9 +20,9 @@ Clear(memory_arena *Arena)
 #define PushTempStruct(Type) (Type *)PushBytes(&GlobalTempArena, sizeof(Type))
 #define PushTempArray(Count, Type) (Type *)PushBytes(&GlobalTempArena, Count*sizeof(Type))
 internal u8 *
-PushBytes(memory_arena *Arena, int ByteCount)
+PushBytes(memory_arena *Arena, size_t ByteCount)
 {
-    int SizeLeft = Arena->Size - Arena->Used;
+    size_t SizeLeft = Arena->Size - Arena->Used;
     ASSERT(SizeLeft >= ByteCount);
     
     u8 *MemPoint = Arena->Base + Arena->Used;
@@ -32,7 +32,7 @@ PushBytes(memory_arena *Arena, int ByteCount)
 }
 
 internal memory_arena
-PushMemoryArena(memory_arena *ParentArena, int Size)
+PushMemoryArena(memory_arena *ParentArena, size_t Size)
 {
     memory_arena Arena = {};
     

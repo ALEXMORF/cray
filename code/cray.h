@@ -2,6 +2,7 @@
 
 #include "cray_memory.h"
 #include "cray_obj.h"
+#include "cray_prefabs.h"
 #include "cray_gpu_upload.h"
 #include "cray_scene.h"
 #include "cray_raster.h"

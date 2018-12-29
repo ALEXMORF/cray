@@ -186,7 +186,7 @@ ConstructBVH(primitive *Prims, int StartIndex, int Count, memory_arena *Arena)
         PartitionAxis = AXIS_Z;
     }
     
-    if (Count > 5 && MaxRange > 0.001f)
+    if (Count > 5 && MaxRange > 0.001f && CalcSurfaceArea(TotalBound) != 0.0f)
     {
         f32 Cut = ChooseBestCutSAH(Prims, StartIndex, Count, 
                                    PartitionAxis, 

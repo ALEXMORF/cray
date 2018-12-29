@@ -11,7 +11,7 @@ InitScene()
 }
 
 internal void
-Interact(scene *Scene, input *Input, f32 dT)
+HandleInput(scene *Scene, input *Input, f32 dT)
 {
     scene_controller *Controller = &Scene->Controller;
     

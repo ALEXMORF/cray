@@ -403,7 +403,13 @@ LoadObj(char *Path, memory_arena *Arena)
     }
     
     char *ObjFileContent = ReadFileTemporarily(ObjPath);
-    ASSERT(ObjFileContent);
+    if (!ObjFileContent)
+    {
+        char PanicMessage[1024];
+        snprintf(PanicMessage, sizeof(PanicMessage),
+                 "couldn't load OBJ file with the given path %s", ObjPath);
+        Panic(PanicMessage);
+    }
     char *ObjFileWalker = ObjFileContent;
     
     int TempVertexCount = 0;

@@ -38,6 +38,13 @@ Win32GetNormalizedMouseP(HWND Window, LPARAM LParam)
     return MouseP;
 }
 
+internal void
+Win32Panic(char *Message)
+{
+    MessageBoxA(0, Message, "Panic", MB_OK|MB_ICONERROR);
+    exit(1);
+}
+
 LRESULT CALLBACK
 Win32WindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
 {
@@ -101,12 +108,21 @@ WinMain(HINSTANCE CurrentInstance,
                                     "CRay", "CRay WndClass", 
                                     Win32WindowCallback);
     HDC WindowDC = GetDC(Window);
-    Win32InitializeOpengl(WindowDC, 4, 4);
+    b32 InitializedOpengl = Win32InitializeOpengl(WindowDC, 4, 4);
+    if (!InitializedOpengl)
+    {
+        Win32Panic("Failed to initialize Opengl 4.4");
+    }
     LoadGLFunctions(Win32GetOpenglFunction);
     
     app_memory AppMemory = {};
     AppMemory.Size = GB(2);
     AppMemory.Data = Win32AllocateMemory(AppMemory.Size);
+    
+    if (!AppMemory.Data)
+    {
+        Win32Panic("Failed to allocate required amount of memory");
+    }
     
     u64 LastCounter = Win32GetPerformanceCounter();
     GlobalAppIsRunning = true;
@@ -155,7 +171,9 @@ WinMain(HINSTANCE CurrentInstance,
         f32 ElapsedTimeInMS = Win32GetTimeElapsedInMS(LastCounter, Win32GetPerformanceCounter());
         f32 dT = ElapsedTimeInMS / 1000.0;
         LastCounter = Win32GetPerformanceCounter();
-        RunCRay(&AppMemory, &GlobalInput, dT, GlobalWindowWidth, GlobalWindowHeight);
+        RunCRay(&AppMemory, &GlobalInput, dT, 
+                GlobalWindowWidth, GlobalWindowHeight, 
+                Win32Panic);
         
         SwapBuffers(WindowDC);
         Sleep(2);

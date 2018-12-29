@@ -31,11 +31,10 @@ PushUniformMat4(gl_rasterizer *Rasterizer, char *Name, mat4 Mat)
 }
 
 internal GLuint
-CompileShader(char *SourceCode, GLenum Type)
+CompileShader(char *Name, char *SourceCode, GLenum Type)
 {
     GLuint Shader = glCreateShader(Type);
     
-    //char *SourceCode = ReadFileTemporarily(FilePath);
     ASSERT(SourceCode);
     glShaderSource(Shader, 1, &SourceCode, 0);
     glCompileShader(Shader);
@@ -47,19 +46,23 @@ CompileShader(char *SourceCode, GLenum Type)
         GLchar Message[1024];
         glGetShaderInfoLog(Shader, sizeof(Message), 0, Message);
         
-        ASSERT(!"Fail to compile shader");
+        char *ShaderType = Type == GL_VERTEX_SHADER? "Vertex Shader": "Fragment Shader";
+        char PanicMessage[1024];
+        snprintf(PanicMessage, sizeof(PanicMessage),
+                 "Failed to compile %s\n: %s error:\n %s", Name, ShaderType, Message);
+        Panic(PanicMessage);
     }
     
     return Shader;
 }
 
 internal GLuint
-CompileShaderProgram(char *VShaderSourceCode, char *FShaderSourceCode)
+CompileShaderProgram(char *ShaderName, char *VShaderSourceCode, char *FShaderSourceCode)
 {
     GLuint Shader = glCreateProgram();
     
-    GLuint VShader = CompileShader(VShaderSourceCode, GL_VERTEX_SHADER);
-    GLuint FShader = CompileShader(FShaderSourceCode, GL_FRAGMENT_SHADER);
+    GLuint VShader = CompileShader(ShaderName, VShaderSourceCode, GL_VERTEX_SHADER);
+    GLuint FShader = CompileShader(ShaderName, FShaderSourceCode, GL_FRAGMENT_SHADER);
     glAttachShader(Shader, VShader);
     glAttachShader(Shader, FShader);
     glLinkProgram(Shader);
@@ -71,7 +74,10 @@ CompileShaderProgram(char *VShaderSourceCode, char *FShaderSourceCode)
         GLchar Message[1024];
         glGetProgramInfoLog(Shader, sizeof(Message), 0, Message);
         
-        ASSERT(!"Shader failed to link");
+        char PanicMessage[1024];
+        snprintf(PanicMessage, sizeof(PanicMessage),
+                 "Failed to link %s:\n %s", ShaderName, Message);
+        Panic(PanicMessage);
     }
     
     return Shader;
@@ -176,9 +182,9 @@ internal gl_rasterizer
 InitRasterizer(int Width, int Height)
 {
     gl_rasterizer Rasterizer = {};
-    Rasterizer.SampleShader = CompileShaderProgram(fullscreen_vert, sample_frag);
-    Rasterizer.BlitShader = CompileShaderProgram(fullscreen_vert, blit_frag);
-    Rasterizer.GBufferPassShader = CompileShaderProgram(geom_vert, gbuffer_frag);
+    Rasterizer.SampleShader = CompileShaderProgram("sample shader", fullscreen_vert, sample_frag);
+    Rasterizer.BlitShader = CompileShaderProgram("blit shader", fullscreen_vert, blit_frag);
+    Rasterizer.GBufferPassShader = CompileShaderProgram("gbuffer shader", geom_vert, gbuffer_frag);
     
     Rasterizer.QuadVAO = MakeQuadVAO();
     Rasterizer.BackBuffer = InitFramebuffer(Width, Height, 2);

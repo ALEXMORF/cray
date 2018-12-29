@@ -15,8 +15,6 @@
 
 /*TODO(chen):
 
-. dump error log instead of silent crash
-. rename raster to render
 . implement Kd-tree
 . implement SBVH
 . faster BVH traversal
@@ -24,7 +22,9 @@
 . Lower memory footprint
 -    compressed 3D mesh storage
 -    a serious material system
--    texturing
+-    textures
+. Allow multiple models
+. Manipulator widget
 . Model level partitioning
 . Pull CRay out as a separate renderer
 . drag and drop models: https://stackoverflow.com/questions/12345435/drag-and-drop-support-for-win32-gui 
@@ -41,7 +41,6 @@
 . Filmic tonemapping
 . more advanced BRDF
 . Multisample progressive rendering
-. Allow textures
 . Allow foliage
 . Test on big scenes
 . Allow dynamic geometry updates
@@ -62,6 +61,11 @@ OpenglCallback(GLenum Source, GLenum Type,
         case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
         case GL_DEBUG_TYPE_PORTABILITY:
         {
+            char PanicMessage[1024];
+            snprintf(PanicMessage, sizeof(PanicMessage),
+                     "OpenGL Error:\n %s", Message);
+            Panic(PanicMessage);
+            
             ASSERT(!"OpenGL Error");
         } break;
         
@@ -81,13 +85,16 @@ OpenglCallback(GLenum Source, GLenum Type,
 }
 
 internal void
-RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height)
+RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height,
+        panic *PlatformPanic)
 {
     ASSERT(sizeof(cray) <= Memory->Size);
     cray *CRay = (cray *)Memory->Data;
     
     if (!Memory->IsInitialized)
     {
+        Panic = PlatformPanic;
+        
         u8 *RestOfMemory = (u8 *)Memory->Data + sizeof(cray);
         int RestOfMemorySize = Memory->Size - sizeof(cray);
         CRay->MainArena = InitMemoryArena(RestOfMemory, RestOfMemorySize);

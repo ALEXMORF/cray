@@ -40,3 +40,5 @@ struct cray
     float T;
 };
 
+typedef void panic(char *Message);
+global_variable panic *Panic;

@@ -31,11 +31,11 @@ PushUniformMat4(gl_rasterizer *Rasterizer, char *Name, mat4 Mat)
 }
 
 internal GLuint
-CompileShader(char *FilePath, GLenum Type)
+CompileShader(char *SourceCode, GLenum Type)
 {
     GLuint Shader = glCreateShader(Type);
     
-    char *SourceCode = ReadFileTemporarily(FilePath);
+    //char *SourceCode = ReadFileTemporarily(FilePath);
     ASSERT(SourceCode);
     glShaderSource(Shader, 1, &SourceCode, 0);
     glCompileShader(Shader);
@@ -54,12 +54,12 @@ CompileShader(char *FilePath, GLenum Type)
 }
 
 internal GLuint
-CompileShaderProgram(char *VShaderPath, char *FShaderPath)
+CompileShaderProgram(char *VShaderSourceCode, char *FShaderSourceCode)
 {
     GLuint Shader = glCreateProgram();
     
-    GLuint VShader = CompileShader(VShaderPath, GL_VERTEX_SHADER);
-    GLuint FShader = CompileShader(FShaderPath, GL_FRAGMENT_SHADER);
+    GLuint VShader = CompileShader(VShaderSourceCode, GL_VERTEX_SHADER);
+    GLuint FShader = CompileShader(FShaderSourceCode, GL_FRAGMENT_SHADER);
     glAttachShader(Shader, VShader);
     glAttachShader(Shader, FShader);
     glLinkProgram(Shader);
@@ -176,9 +176,10 @@ internal gl_rasterizer
 InitRasterizer(int Width, int Height)
 {
     gl_rasterizer Rasterizer = {};
-    Rasterizer.SampleShader = CompileShaderProgram("../code/fullscreen_vert.glsl", "../code/sample_frag.glsl");
-    Rasterizer.BlitShader = CompileShaderProgram("../code/fullscreen_vert.glsl", "../code/blit_frag.glsl");
-    Rasterizer.GBufferPassShader = CompileShaderProgram("../code/geom_vert.glsl", "../code/gbuffer_frag.glsl");
+    Rasterizer.SampleShader = CompileShaderProgram(fullscreen_vert, sample_frag);
+    Rasterizer.BlitShader = CompileShaderProgram(fullscreen_vert, blit_frag);
+    Rasterizer.GBufferPassShader = CompileShaderProgram(geom_vert, gbuffer_frag);
+    
     Rasterizer.QuadVAO = MakeQuadVAO();
     Rasterizer.BackBuffer = InitFramebuffer(Width, Height, 2);
     Rasterizer.GBuffer = InitFramebuffer(Width, Height, 4);

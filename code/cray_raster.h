@@ -1,4 +1,5 @@
 #pragma once
+#include "cray_shader_code.h"
 
 struct framebuffer
 {

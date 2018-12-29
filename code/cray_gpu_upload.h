@@ -31,8 +31,6 @@ struct triangles
     int Count;
 };
 
-#include "cray_bvh.h"
-
 struct uploaded_data
 {
     GLuint GeometryVAO;

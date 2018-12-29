@@ -105,7 +105,7 @@ WinMain(HINSTANCE CurrentInstance,
     LoadGLFunctions(Win32GetOpenglFunction);
     
     app_memory AppMemory = {};
-    AppMemory.Size = GB(4);
+    AppMemory.Size = GB(2);
     AppMemory.Data = Win32AllocateMemory(AppMemory.Size);
     
     u64 LastCounter = Win32GetPerformanceCounter();

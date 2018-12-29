@@ -117,8 +117,6 @@ CalcSecondsPassed(clock_t BeginClock)
     return (f32)(clock() - BeginClock) / (f32)CLOCKS_PER_SEC;
 }
 
-#include "cray_bvh.cpp"
-
 internal uploaded_data
 UploadGeometryToGPU(char *ObjPath, mat4 XForm)
 {

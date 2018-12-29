@@ -458,7 +458,6 @@ LoadObj(char *Path, memory_arena *Arena)
             //NOTE(chen): discards faces with alpha less than 1
             b32 FaceIsTransparent = (CurrentMatIndex != -1 &&
                                      Mats[CurrentMatIndex].Albedo.A < 0.9f);
-            FaceIsTransparent = false;
             
             if (!FaceIsTransparent)
             {

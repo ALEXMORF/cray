@@ -71,6 +71,7 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
     {
         ImGui::OpenPopup("Load Model");
     }
+    ImGui::SetNextWindowSize(ImVec2(300, 100), ImGuiSetCond_Once);
     if (ImGui::BeginPopupModal("Load Model"))
     {
         local_persist int ChosenPrefabIndex = 0;
@@ -93,6 +94,8 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
             }
             ImGui::CloseCurrentPopup();
         }
+        
+        ImGui::SameLine();
         
         if (ImGui::Button("Cancel"))
         {

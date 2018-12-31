@@ -36,16 +36,16 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
 {
     ImGui::Begin("CRay", 0, ImGuiWindowFlags_AlwaysAutoResize);
     
-    ImGui::Text("Model Loading time: %.3f seconds", CRay->Uploaded.ModelLoadingTime);
-    ImGui::Text("BVH Construction time: %.3f seconds", CRay->Uploaded.BvhConstructionTime);
-    ImGui::Text("Triangle Count: %d", CRay->Uploaded.TriangleCount);
-    ImGui::Text("Geometry Vertex Count: %d", CRay->Uploaded.GeometryVertexCount);
-    ImGui::Text("BVH Node Count: %d", CRay->Uploaded.BvhEntryCount);
+    ImGui::Text("Model Loading time: %.3f seconds", CRay->Model.ModelLoadingTime);
+    ImGui::Text("BVH Construction time: %.3f seconds", CRay->Model.BvhConstructionTime);
+    ImGui::Text("Triangle Count: %d", CRay->Model.TriangleCount);
+    ImGui::Text("Geometry Vertex Count: %d", CRay->Model.GeometryVertexCount);
+    ImGui::Text("BVH Node Count: %d", CRay->Model.BvhEntryCount);
     ImGui::Text("Render time: %.3f miliseconds", 1000.0f*dT);
     {
         int PixelCount = Width * Height;
-        int RayPerPixel = 2 * CRay->Rasterizer.Settings.MaxBounceCount;
-        if (CRay->Rasterizer.Settings.RasterizeFirstBounce)
+        int RayPerPixel = 2 * CRay->Renderer.Settings.MaxBounceCount;
+        if (CRay->Renderer.Settings.RasterizeFirstBounce)
         {
             RayPerPixel -= 1;
         }
@@ -56,7 +56,7 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
     
     ImGui::Separator();
     {
-        render_settings *Settings = &CRay->Rasterizer.Settings;
+        render_settings *Settings = &CRay->Renderer.Settings;
         ImGui::Checkbox("Rasterize First Bounce", (bool *)&Settings->RasterizeFirstBounce);
         ImGui::Checkbox("Enable Ground Plane", (bool *)&Settings->EnableGroundPlane);
         ImGui::InputInt("Max Bounce Count", &Settings->MaxBounceCount);
@@ -65,7 +65,7 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
         ImGui::DragFloat3("Sun Radiance", (f32 *)&Settings->SunRadiance, 0.01f);
         ImGui::DragFloat3("Zenith", (f32 *)&Settings->Zenith, 0.01f);
         ImGui::DragFloat3("Azimuth", (f32 *)&Settings->Azimuth, 0.01f);
-        ImGui::DragFloat("Exposure", &CRay->Rasterizer.Exposure, 0.01f);
+        ImGui::DragFloat("Exposure", &CRay->Renderer.Exposure, 0.01f);
     }
     if (ImGui::Button("Load Model"))
     {
@@ -88,9 +88,9 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
         {
             if (ChosenPrefabIndex >= 0 && ChosenPrefabIndex < ARRAY_COUNT(GlobalPrefabs))
             {
-                FreeUploadedData(CRay->Uploaded);
-                CRay->Uploaded = UploadGeometryToGPU(GlobalPrefabs[ChosenPrefabIndex]);
-                Refresh(&CRay->Rasterizer);
+                CRay->Model = LoadModel(GlobalPrefabs[ChosenPrefabIndex], &GlobalTempArena);
+                UploadModelToGLRenderer(&CRay->Renderer, CRay->Model);
+                Refresh(&CRay->Renderer);
             }
             ImGui::CloseCurrentPopup();
         }

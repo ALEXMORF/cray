@@ -1,13 +1,14 @@
 #pragma once
 
-#define global_variable static
-#define local_persist static
-#define internal static
-
 #include <math.h>
 #include <float.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdarg.h>
+
+#define global_variable static
+#define local_persist static
+#define internal static
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -42,3 +43,19 @@ typedef bool b8;
 #define GB(Value) MB(1024LL*(u64)Value)
 
 #define ARRAY_COUNT(Array) (sizeof(Array)/sizeof((Array)[0]))
+
+typedef void panic(char *Message);
+global_variable panic *__PanicStr;
+
+internal void
+Panic(char *Fmt, ...)
+{
+    va_list Args;
+    va_start(Args, Fmt);
+    
+    char PanicBuffer[1024];
+    vsnprintf(PanicBuffer, sizeof(PanicBuffer), Fmt, Args);
+    __PanicStr(PanicBuffer);
+    
+    va_end(Args);
+}

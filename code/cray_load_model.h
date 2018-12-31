@@ -31,14 +31,16 @@ struct triangles
     int Count;
 };
 
-struct uploaded_data
+struct loaded_model
 {
-    GLuint GeometryVAO;
-    GLuint TrianglesSSBO;
-    GLuint BvhSSBO;
+    //TODO(chen): replace with stretchy buffer
+    vertices Vertices;
+    triangles Triangles;
+    linear_bvh BVH;
+    
     int GeometryVertexCount;
-    u64 TriangleCount;
-    u64 BvhEntryCount;
+    int TriangleCount;
+    int BvhEntryCount;
     
     f32 ModelLoadingTime;
     f32 BvhConstructionTime;

@@ -5,9 +5,9 @@
 #include "cray_memory.h"
 #include "cray_obj.h"
 #include "cray_bvh.h"
-#include "cray_gpu_upload.h"
-#include "cray_scene.h"
-#include "cray_raster.h"
+#include "cray_load_model.h"
+#include "cray_gl_renderer.h"
+#include "cray_camera.h"
 
 struct app_memory
 {
@@ -32,13 +32,10 @@ struct input
 struct cray
 {
     memory_arena MainArena;
-    gl_rasterizer Rasterizer;
-    uploaded_data Uploaded;
-    scene Scene;
+    gl_renderer Renderer;
+    loaded_model Model;
+    camera Camera;
     
     b32 ShowUI;
     float T;
 };
-
-typedef void panic(char *Message);
-global_variable panic *Panic;

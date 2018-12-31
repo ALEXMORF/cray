@@ -24,7 +24,7 @@ char *ReadEntireFile(char *Path)
 
 int main()
 {
-    char *BakedFilename = "../code/cray_shader_code.h";
+    char *BakedFilename = "../code/cray_gl_shader_code.h";
     
     printf("baking shader code into %s\n", BakedFilename);
     

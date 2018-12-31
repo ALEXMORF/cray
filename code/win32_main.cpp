@@ -1,9 +1,9 @@
 #include "ch_common.h"
-#include "ch_gl.h"
 #include "ch_math.h"
 #include "cray.cpp"
 
 #undef APIENTRY
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <windowsx.h>
 #include <ShellScalingAPI.h>
@@ -45,6 +45,18 @@ Win32Panic(char *Message)
     exit(1);
 }
 
+
+internal void
+Win32TrackMouse(HWND Window)
+{
+    TRACKMOUSEEVENT MouseEvent = {};
+    MouseEvent.cbSize = sizeof(MouseEvent);
+    MouseEvent.dwFlags = TME_LEAVE;
+    MouseEvent.hwndTrack = Window;
+    MouseEvent.dwHoverTime = HOVER_DEFAULT;
+    TrackMouseEvent(&MouseEvent);
+}
+
 LRESULT CALLBACK
 Win32WindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
 {
@@ -78,6 +90,11 @@ Win32WindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
             GlobalInput.MouseP = Win32GetNormalizedMouseP(Window, LParam);
         } break;
         
+        case WM_MOUSELEAVE:
+        {
+            GlobalInput.MouseIsDown = false;
+        } break;
+        
         case WM_SIZE:
         {
             GlobalWindowWidth = LOWORD(LParam);
@@ -108,12 +125,15 @@ WinMain(HINSTANCE CurrentInstance,
                                     "CRay", "CRay WndClass", 
                                     Win32WindowCallback);
     HDC WindowDC = GetDC(Window);
+    
+#if CRAY_USE_OPENGL
     b32 InitializedOpengl = Win32InitializeOpengl(WindowDC, 4, 4);
     if (!InitializedOpengl)
     {
         Win32Panic("Failed to initialize Opengl 4.4");
     }
     LoadGLFunctions(Win32GetOpenglFunction);
+#endif
     
     app_memory AppMemory = {};
     AppMemory.Size = GB(2);
@@ -128,6 +148,9 @@ WinMain(HINSTANCE CurrentInstance,
     GlobalAppIsRunning = true;
     while (GlobalAppIsRunning)
     {
+        //TODO(chen): doing this per frame ... is that safe?
+        Win32TrackMouse(Window);
+        
         MSG Message = {};
         while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
         {
@@ -169,7 +192,7 @@ WinMain(HINSTANCE CurrentInstance,
         }
         
         f32 ElapsedTimeInMS = Win32GetTimeElapsedInMS(LastCounter, Win32GetPerformanceCounter());
-        f32 dT = ElapsedTimeInMS / 1000.0;
+        f32 dT = ElapsedTimeInMS / 1000.0f;
         LastCounter = Win32GetPerformanceCounter();
         RunCRay(&AppMemory, &GlobalInput, dT, 
                 GlobalWindowWidth, GlobalWindowHeight, 
@@ -178,7 +201,7 @@ WinMain(HINSTANCE CurrentInstance,
         SwapBuffers(WindowDC);
         Sleep(2);
         
-        f32 EstimatedFPS = 1.0 / dT;
+        f32 EstimatedFPS = 1.0f / dT;
         char TitleBuf[255];
         snprintf(TitleBuf, sizeof(TitleBuf), "CRay - %.2f ms elapsed, %.2f FPS", ElapsedTimeInMS, EstimatedFPS);
         SetWindowTextA(Window, TitleBuf);

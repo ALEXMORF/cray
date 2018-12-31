@@ -1,28 +1,41 @@
 #include <imgui.h>
 #include <imgui.cpp>
 #include <imgui_draw.cpp>
-#include "gl_imgui.cpp"
 
 #include "cray.h"
 
 #include "cray_memory.cpp"
 #include "cray_obj.cpp"
 #include "cray_bvh.cpp"
-#include "cray_gpu_upload.cpp"
-#include "cray_scene.cpp"
-#include "cray_raster.cpp"
+#include "cray_load_model.cpp"
+#include "cray_gl_renderer.cpp"
+#include "cray_camera.cpp"
 #include "cray_ui.cpp"
 
 /*TODO(chen):
 
-. implement Kd-tree
+. read Kd-tree
+. Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
+-   Implement stretchy buffer
+-   replace vertices and triangles structs as they are unnecessary
+-   use stretchy buffer for all allocations done in LoadModel()
+. switch to dx11 for the renderer
+. Optimize shadow rays: don't return nearest t, instead only a boolean result is needed.
+. Better BVH subdivision termination rule
+. faster BVH traversal (stackless)
+. compressed BVH storage on GPU
+. faster ray vs triangle tests (woop test)
 . implement SBVH
-. faster BVH traversal
- . faster ray vs triangle tests
-. Lower memory footprint
+ . Lower memory footprint
 -    compressed 3D mesh storage
 -    a serious material system
+-    add ply loader
+-    support pbrt scenes
+-    support PBR material from pbrt scenes
 -    textures
+. actual physically based rendering
+. Proper backwards-compatible DPI scaling
+. Handle text DPI-scaling correctly
 . Allow multiple models
 . Manipulator widget
 . Model level partitioning
@@ -47,43 +60,6 @@
 
 */
 
-internal void APIENTRY 
-OpenglCallback(GLenum Source, GLenum Type,
-               GLuint ID, GLenum Severity,
-               GLsizei Length,
-               const GLchar* Message,
-               const void* UserData)
-{
-    switch (Type)
-    {
-        case GL_DEBUG_TYPE_ERROR:
-        case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
-        case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
-        case GL_DEBUG_TYPE_PORTABILITY:
-        {
-            char PanicMessage[1024];
-            snprintf(PanicMessage, sizeof(PanicMessage),
-                     "OpenGL Error:\n %s", Message);
-            Panic(PanicMessage);
-            
-            ASSERT(!"OpenGL Error");
-        } break;
-        
-        case GL_DEBUG_TYPE_PERFORMANCE:
-        {
-            //TODO(chen): record performance problems
-        } break;
-    }
-    
-#if 0
-    if (Severity == GL_DEBUG_SEVERITY_MEDIUM || 
-        Severity == GL_DEBUG_SEVERITY_HIGH)
-    {
-        ASSERT(!"High Severity issue");
-    }
-#endif
-}
-
 internal void
 RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height,
         panic *PlatformPanic)
@@ -93,22 +69,19 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height,
     
     if (!Memory->IsInitialized)
     {
-        Panic = PlatformPanic;
+        __PanicStr = PlatformPanic;
         
         u8 *RestOfMemory = (u8 *)Memory->Data + sizeof(cray);
-        int RestOfMemorySize = Memory->Size - sizeof(cray);
+        u64 RestOfMemorySize = Memory->Size - sizeof(cray);
         CRay->MainArena = InitMemoryArena(RestOfMemory, RestOfMemorySize);
         GlobalTempArena = PushMemoryArena(&CRay->MainArena, GB(1));
         
-        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-        glDebugMessageCallback(OpenglCallback, 0);
-        
-        CRay->Rasterizer = InitRasterizer(Width, Height);
-        CRay->Uploaded = UploadGeometryToGPU(GlobalPrefabs[0]);
-        CRay->Scene = InitScene();
+        CRay->Renderer = InitGLRenderer(Width, Height);
+        CRay->Model = LoadModel(GlobalPrefabs[0], &GlobalTempArena);
+        UploadModelToGLRenderer(&CRay->Renderer, CRay->Model);
+        CRay->Camera = InitCamera();
         
         CRay->ShowUI = true;
-        InitImgui();
         
         Memory->IsInitialized = true;
     }
@@ -122,27 +95,27 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height,
         CRay->ShowUI = true;
     }
     
-    render_settings OldSettings = CRay->Rasterizer.Settings;
+    render_settings OldSettings = CRay->Renderer.Settings;
     if (CRay->ShowUI)
     {
         DoUI(CRay, Width, Height, dT);
     }
-    if (OldSettings != CRay->Rasterizer.Settings)
+    if (OldSettings != CRay->Renderer.Settings)
     {
-        Refresh(&CRay->Rasterizer);
+        Refresh(&CRay->Renderer);
     }
     
-    v3 LastCamP = CRay->Scene.CamP;
-    v3 LastCamLookAt = CRay->Scene.CamLookAt;
-    HandleInput(&CRay->Scene, Input, dT);
-    if (LastCamP != CRay->Scene.CamP ||
-        LastCamLookAt != CRay->Scene.CamLookAt)
+    v3 LastCamP = CRay->Camera.P;
+    v3 LastCamLookAt = CRay->Camera.LookAt;
+    HandleInput(&CRay->Camera, Input, dT);
+    if (LastCamP != CRay->Camera.P ||
+        LastCamLookAt != CRay->Camera.LookAt)
     {
-        Refresh(&CRay->Rasterizer);
+        Refresh(&CRay->Renderer);
     }
     
-    PrepareForRasterization(&CRay->Rasterizer, Width, Height);
-    Rasterize(&CRay->Rasterizer, &CRay->Scene, &CRay->Uploaded, CRay->T);
+    ResizeResources(&CRay->Renderer, Width, Height);
+    Render(&CRay->Renderer, &CRay->Camera, CRay->T);
     
     ImGui::Render();
 }

@@ -6,3 +6,4 @@ mkdir .\release
 mkdir .\release\win32_build
 echo f | xcopy .\build\win32_main.exe .\release\win32_build\cray.exe
 echo d | xcopy /s .\data .\release\data
+echo f | xcopy .\README.txt .\release\README.txt

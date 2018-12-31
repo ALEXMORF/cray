@@ -90,7 +90,7 @@ ChooseBestCutSAH(primitive *Prims, int StartIndex, int Count,
     }
     
     f32 Cut = -1.0f;
-    f32 MinCost = 10e31;
+    f32 MinCost = 10e31f;
     for (int CutIndex = 0; CutIndex < BucketCount-1; ++CutIndex)
     {
         int LeftBucketCount = CutIndex + 1;

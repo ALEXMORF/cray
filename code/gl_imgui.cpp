@@ -13,7 +13,7 @@ global_variable GLint g_AttribLocationUV;
 global_variable GLint g_AttribLocationColor;
 
 internal void
-RenderImgui(ImDrawData *DrawData)
+RenderImguiOpengl(ImDrawData *DrawData)
 {
     // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
     ImGuiIO& IO = ImGui::GetIO();
@@ -107,7 +107,7 @@ RenderImgui(ImDrawData *DrawData)
 }
 
 internal void
-InitImgui()
+InitImguiOpengl()
 {
     ImGuiIO& IO = ImGui::GetIO();
     
@@ -120,7 +120,7 @@ InitImgui()
     
     IO.DisplaySize.x = (f32)Viewport[2];
     IO.DisplaySize.y = (f32)Viewport[3];
-    IO.RenderDrawListsFn = RenderImgui;
+    IO.RenderDrawListsFn = RenderImguiOpengl;
     IO.IniFilename = "../build/imgui.ini";
     
     unsigned char* Pixels;

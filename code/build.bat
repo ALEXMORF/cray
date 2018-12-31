@@ -12,7 +12,7 @@ ctime -end bake_shader.ctm
 
 ctime -begin cray.ctm
 
-set CompilerFlags=-nologo -Z7 -O2 -FC /I ../code/3rd/
+set CompilerFlags=-nologo -Z7 -Od -FC /I ../code/3rd/ -WX -W4 -wd4201 -wd4100
 set LinkerFlags=-subsystem:windows -incremental:no User32.lib Gdi32.lib Opengl32.lib
 cl %CompilerFlags% ..\code\win32_main.cpp /link %LinkerFlags%
 

@@ -256,7 +256,7 @@ ReadFloat(char *Str, f32 *Float_Out)
         {
             int Digit = *Cursor++ - '0';
             DeciNum += Weight * (f32)Digit;
-            Weight *= 0.1;
+            Weight *= 0.1f;
         }
     }
     
@@ -405,10 +405,7 @@ LoadObj(char *Path, memory_arena *Arena)
     char *ObjFileContent = ReadFileTemporarily(ObjPath);
     if (!ObjFileContent)
     {
-        char PanicMessage[1024];
-        snprintf(PanicMessage, sizeof(PanicMessage),
-                 "couldn't load OBJ file with the given path %s", ObjPath);
-        Panic(PanicMessage);
+        Panic("couldn't load OBJ file with the given path %s", ObjPath);
     }
     char *ObjFileWalker = ObjFileContent;
     

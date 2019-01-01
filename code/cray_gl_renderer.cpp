@@ -204,6 +204,24 @@ OpenglCallback(GLenum Source, GLenum Type,
 #endif
 }
 
+internal GLuint
+BindSSBO(int BindingIndex, void *Data, int Size)
+{
+    //NOTE(chen): upload triangles onto SSBO
+    GLuint SSBO = 0;
+    glGenBuffers(1, &SSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, Size, Data, GL_STATIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BindingIndex, SSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); 
+    
+    return SSBO;
+}
+
+//
+//
+// Renderer API implemented with OpenGL
+
 internal gl_renderer
 InitGLRenderer(int Width, int Height)
 {
@@ -240,22 +258,8 @@ InitGLRenderer(int Width, int Height)
     return Renderer;
 }
 
-internal GLuint
-BindSSBO(int BindingIndex, void *Data, int Size)
-{
-    //NOTE(chen): upload triangles onto SSBO
-    GLuint SSBO = 0;
-    glGenBuffers(1, &SSBO);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, Size, Data, GL_STATIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BindingIndex, SSBO);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); 
-    
-    return SSBO;
-}
-
 internal void
-UploadModelToGLRenderer(gl_renderer *Renderer, loaded_model Model)
+UploadModelToRenderer(gl_renderer *Renderer, loaded_model Model)
 {
     if (Renderer->GeometryVAO)
     {

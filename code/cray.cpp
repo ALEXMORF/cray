@@ -8,24 +8,24 @@
 #include "cray_obj.cpp"
 #include "cray_bvh.cpp"
 #include "cray_load_model.cpp"
-#include "cray_gl_renderer.cpp"
+//#include "cray_gl_renderer.cpp"
+#include "cray_dx_renderer.cpp"
 #include "cray_camera.cpp"
 #include "cray_ui.cpp"
 
 /*TODO(chen):
 
-. read Kd-tree
+. switch to dx11 for the renderer
 . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
 -   Implement stretchy buffer
 -   replace vertices and triangles structs as they are unnecessary
 -   use stretchy buffer for all allocations done in LoadModel()
-. switch to dx11 for the renderer
 . Optimize shadow rays: don't return nearest t, instead only a boolean result is needed.
 . Better BVH subdivision termination rule
 . faster BVH traversal (stackless)
+. implement SBVH
 . compressed BVH storage on GPU
 . faster ray vs triangle tests (woop test)
-. implement SBVH
  . Lower memory footprint
 -    compressed 3D mesh storage
 -    a serious material system
@@ -61,8 +61,8 @@
 */
 
 internal void
-RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height,
-        panic *PlatformPanic)
+RunCRay(app_memory *Memory, input *Input, f32 dT, 
+        HWND Window, int Width, int Height, panic *PlatformPanic)
 {
     ASSERT(sizeof(cray) <= Memory->Size);
     cray *CRay = (cray *)Memory->Data;
@@ -76,25 +76,27 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height,
         CRay->MainArena = InitMemoryArena(RestOfMemory, RestOfMemorySize);
         GlobalTempArena = PushMemoryArena(&CRay->MainArena, GB(1));
         
-        CRay->Renderer = InitGLRenderer(Width, Height);
+        //CRay->Renderer = InitGLRenderer(Width, Height);
+        CRay->Renderer = InitDXRenderer(Window, Width, Height);
         CRay->Model = LoadModel(GlobalPrefabs[0], &GlobalTempArena);
-        UploadModelToGLRenderer(&CRay->Renderer, CRay->Model);
+        UploadModelToRenderer(&CRay->Renderer, CRay->Model);
         CRay->Camera = InitCamera();
         
-        CRay->ShowUI = true;
+        CRay->ShowUI = false;
         
         Memory->IsInitialized = true;
     }
     Clear(&GlobalTempArena);
     CRay->T += dT;
     
-    UINewFrame(Input, Width, Height, dT);
+    //UINewFrame(Input, Width, Height, dT);
     
     if (Input->Keys['Q'])
     {
         CRay->ShowUI = true;
     }
     
+#if 0
     render_settings OldSettings = CRay->Renderer.Settings;
     if (CRay->ShowUI)
     {
@@ -104,6 +106,7 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height,
     {
         Refresh(&CRay->Renderer);
     }
+#endif
     
     v3 LastCamP = CRay->Camera.P;
     v3 LastCamLookAt = CRay->Camera.LookAt;
@@ -117,5 +120,6 @@ RunCRay(app_memory *Memory, input *Input, f32 dT, int Width, int Height,
     ResizeResources(&CRay->Renderer, Width, Height);
     Render(&CRay->Renderer, &CRay->Camera, CRay->T);
     
-    ImGui::Render();
+    //ImGui::Render();
+    Present(&CRay->Renderer);
 }

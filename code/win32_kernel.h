@@ -198,6 +198,7 @@ Win32BlitBufferToScreen(HDC WindowDC, void *Buffer, int Width, int Height)
                   Buffer, &BitmapInfo, DIB_RGB_COLORS, SRCCOPY);
 }
 
+/*
 void *
 Win32GetOpenglFunction(char *FunctionName)
 {
@@ -262,7 +263,7 @@ Win32InitializeOpengl(HDC WindowDC, int MajorVersion, int MinorVersion)
     wglSwapInterval = (wgl_swap_interval_ext *)wglGetProcAddress("wglSwapIntervalEXT");
     ASSERT(wglSwapInterval);
 #endif
-    
+
     wgl_create_context_attribs_arb *wglCreateContextAttribsARB = (wgl_create_context_attribs_arb *)wglGetProcAddress("wglCreateContextAttribsARB");
     ASSERT(wglCreateContextAttribsARB);
     
@@ -290,3 +291,4 @@ Win32InitializeOpengl(HDC WindowDC, int MajorVersion, int MinorVersion)
     return false;
 }
 #pragma warning(pop)
+*/

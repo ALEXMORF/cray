@@ -34,6 +34,7 @@ UINewFrame(input *Input, int Width, int Height, f32 dT)
 internal void
 DoUI(cray *CRay, int Width, int Height, f32 dT)
 {
+#if 0
     ImGui::Begin("CRay", 0, ImGuiWindowFlags_AlwaysAutoResize);
     
     ImGui::Text("Model Loading time: %.3f seconds", CRay->Model.ModelLoadingTime);
@@ -89,7 +90,7 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
             if (ChosenPrefabIndex >= 0 && ChosenPrefabIndex < ARRAY_COUNT(GlobalPrefabs))
             {
                 CRay->Model = LoadModel(GlobalPrefabs[ChosenPrefabIndex], &GlobalTempArena);
-                UploadModelToGLRenderer(&CRay->Renderer, CRay->Model);
+                UploadModelToRenderer(&CRay->Renderer, CRay->Model);
                 Refresh(&CRay->Renderer);
             }
             ImGui::CloseCurrentPopup();
@@ -110,4 +111,5 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
     }
     
     ImGui::End();
+#endif
 }

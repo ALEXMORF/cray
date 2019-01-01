@@ -124,16 +124,6 @@ WinMain(HINSTANCE CurrentInstance,
                                     GlobalWindowWidth, GlobalWindowHeight, 
                                     "CRay", "CRay WndClass", 
                                     Win32WindowCallback);
-    HDC WindowDC = GetDC(Window);
-    
-#if CRAY_USE_OPENGL
-    b32 InitializedOpengl = Win32InitializeOpengl(WindowDC, 4, 4);
-    if (!InitializedOpengl)
-    {
-        Win32Panic("Failed to initialize Opengl 4.4");
-    }
-    LoadGLFunctions(Win32GetOpenglFunction);
-#endif
     
     app_memory AppMemory = {};
     AppMemory.Size = GB(2);
@@ -195,10 +185,9 @@ WinMain(HINSTANCE CurrentInstance,
         f32 dT = ElapsedTimeInMS / 1000.0f;
         LastCounter = Win32GetPerformanceCounter();
         RunCRay(&AppMemory, &GlobalInput, dT, 
-                GlobalWindowWidth, GlobalWindowHeight, 
+                Window, GlobalWindowWidth, GlobalWindowHeight, 
                 Win32Panic);
         
-        SwapBuffers(WindowDC);
         Sleep(2);
         
         f32 EstimatedFPS = 1.0f / dT;

@@ -60,7 +60,7 @@ Win32TrackMouse(HWND Window)
 LRESULT CALLBACK
 Win32WindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
 {
-    LRESULT Result = 0;
+    LRESULT Result = S_OK;
     
     switch (Message)
     {

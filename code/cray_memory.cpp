@@ -15,6 +15,30 @@ Clear(memory_arena *Arena)
     Arena->Used = 0;
 }
 
+internal void
+SaveOffset(memory_arena *Arena)
+{
+    Arena->SavedOffset = Arena->Used;
+}
+
+internal void
+RewindToSavedOffset(memory_arena *Arena)
+{
+    Arena->Used = Arena->SavedOffset;
+}
+
+internal void
+SaveTempArenaOffset()
+{
+    SaveOffset(&GlobalTempArena);
+}
+
+internal void
+RewindTempArenaToSavedOffset()
+{
+    RewindToSavedOffset(&GlobalTempArena);
+}
+
 #define PushStruct(Arena, Type) (Type *)PushBytes(Arena, sizeof(Type))
 #define PushArray(Arena, Count, Type) (Type *)PushBytes(Arena, Count*sizeof(Type))
 #define PushTempStruct(Type) (Type *)PushBytes(&GlobalTempArena, sizeof(Type))

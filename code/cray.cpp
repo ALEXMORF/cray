@@ -9,13 +9,17 @@
 #include "cray_bvh.cpp"
 #include "cray_load_model.cpp"
 //#include "cray_gl_renderer.cpp"
-#include "cray_dx_renderer.cpp"
 #include "cray_camera.cpp"
+#include "cray_dx_renderer.cpp"
 #include "cray_ui.cpp"
 
 /*TODO(chen):
 
 . switch to dx11 for the renderer
+-   port the sampler shader code over
+-   add volatile sampler data of renderer, needs per-frame updating UpdateSubresource()
+ -   a switch to toggle compiler optimization
+-   a switch to toggle device's debug layer
 . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
 -   Implement stretchy buffer
 -   replace vertices and triangles structs as they are unnecessary
@@ -76,11 +80,10 @@ RunCRay(app_memory *Memory, input *Input, f32 dT,
         CRay->MainArena = InitMemoryArena(RestOfMemory, RestOfMemorySize);
         GlobalTempArena = PushMemoryArena(&CRay->MainArena, GB(1));
         
-        //CRay->Renderer = InitGLRenderer(Width, Height);
-        CRay->Renderer = InitDXRenderer(Window, Width, Height);
+        CRay->Camera = InitCamera();
+        CRay->Renderer = InitDXRenderer(Window, &CRay->Camera);
         CRay->Model = LoadModel(GlobalPrefabs[0], &GlobalTempArena);
         UploadModelToRenderer(&CRay->Renderer, CRay->Model);
-        CRay->Camera = InitCamera();
         
         CRay->ShowUI = false;
         

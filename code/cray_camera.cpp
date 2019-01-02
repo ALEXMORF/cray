@@ -1,3 +1,9 @@
+inline void
+UpdateLookAt(camera *Camera)
+{
+    Camera->LookAt = Camera->P + Rotate(ZAxis(), Camera->Controller.DraggedRotation * Camera->Orientation);
+}
+
 internal camera
 InitCamera()
 {
@@ -6,6 +12,7 @@ InitCamera()
     Camera.P = {0.0f, 0.7f, -2.0f};
     Camera.Orientation = Quaternion(XAxis(), 0.1f);
     Camera.Controller.DraggedRotation = Quaternion();
+    UpdateLookAt(&Camera);
     
     return Camera;
 }
@@ -57,5 +64,5 @@ HandleInput(camera *Camera, input *Input, f32 dT)
     
     float CamSpeed = 1.0f;
     Camera->P += CamSpeed * dT * Normalize(dP);
-    Camera->LookAt = Camera->P + Rotate(ZAxis(), Controller->DraggedRotation * Camera->Orientation);
+    UpdateLookAt(Camera);
 }

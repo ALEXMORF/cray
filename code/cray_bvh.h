@@ -39,14 +39,11 @@ struct bvh_node
     int PrimitiveCount; //NOTE(chen): set to -1 for intermediate node
 };
 
-#pragma pack(push, 1)
 struct bvh_entry
 {
     //NOTE(chen): bound
     v3 BoundMin;
-    u32 Pad1;
     v3 BoundMax;
-    u32 Pad2;
     
     union
     {
@@ -55,10 +52,7 @@ struct bvh_entry
     };
     i32 PrimitiveCount;
     i32 Axis;
-    
-    u32 Pad3;
 };
-#pragma pack(pop)
 
 struct linear_bvh
 {

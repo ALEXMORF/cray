@@ -1,5 +1,5 @@
 inline bound
-BoundTriangle(packed_triangle Triangle)
+BoundTriangle(triangle Triangle)
 {
     bound Bound = {};
     
@@ -243,7 +243,7 @@ Flatten(bvh_node *Node, bvh_entry *Array, int *Offset)
 }
 
 internal linear_bvh
-ConstructLinearBVH(packed_triangle *Triangles, int Count, memory_arena *Arena)
+ConstructLinearBVH(triangle *Triangles, int Count, memory_arena *Arena)
 {
     linear_bvh Result = {};
     
@@ -265,7 +265,7 @@ ConstructLinearBVH(packed_triangle *Triangles, int Count, memory_arena *Arena)
     Flatten(Root, Result.Data, &Offset);
     
     //NOTE(chen): resort triangles to match order of primitives
-    packed_triangle *SortedTriangles = PushTempArray(Count, packed_triangle);
+    triangle *SortedTriangles = PushTempArray(Count, triangle);
     for (int PrimIndex = 0; PrimIndex < Count; ++PrimIndex)
     {
         int SortedIndex = Prims[PrimIndex].TriIndex;

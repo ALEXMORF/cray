@@ -7,8 +7,8 @@
 #include "cray_bvh.h"
 #include "cray_load_model.h"
 //#include "cray_gl_renderer.h"
-#include "cray_dx_renderer.h"
 #include "cray_camera.h"
+#include "cray_dx_renderer.h"
 
 struct app_memory
 {

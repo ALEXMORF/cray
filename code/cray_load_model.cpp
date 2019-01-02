@@ -44,12 +44,12 @@ ConvertVerticesToTriangles(vertices Vertices,
     triangles Result = {};
     
     Result.Count = Vertices.Count / 3;
-    Result.Data = PushArray(Arena, Result.Count, packed_triangle);
+    Result.Data = PushArray(Arena, Result.Count, triangle);
     
     int VertexCursor = 0;
     for (int TriIndex = 0; TriIndex < Result.Count; ++TriIndex)
     {
-        packed_triangle *Triangle = Result.Data + TriIndex;
+        triangle *Triangle = Result.Data + TriIndex;
         
         Triangle->N = Normalize(Vertices.Data[VertexCursor].N);
         Triangle->Albedo = Vertices.Data[VertexCursor].Albedo;

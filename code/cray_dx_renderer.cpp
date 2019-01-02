@@ -311,15 +311,36 @@ UploadModelToRenderer(dx_renderer *Renderer, loaded_model Model)
 }
 
 internal void
+UpdateBuffer(ID3D11DeviceContext1 *DeviceContext, ID3D11Buffer *Buffer, void *Data, size_t DataSize)
+{
+    D3D11_MAPPED_SUBRESOURCE MappedResource = {};
+    HRESULT ResourceIsMapped = DeviceContext->Map(Buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedResource);
+    ASSERT(SUCCEEDED(ResourceIsMapped));
+    memcpy(MappedResource.pData, Data, DataSize);
+    DeviceContext->Unmap(Buffer, 0);
+}
+
+internal void
 Refresh(dx_renderer *Renderer)
 {
-    //Panic("No refresh yet");
+    Renderer->Context.SampleCountSoFar = 0;
+}
+
+internal void
+RefreshCamera(dx_renderer *Renderer, camera *Camera)
+{
+    Renderer->Camera.P = Camera->P;
+    Renderer->Camera.LookAt = Camera->LookAt;
+    UpdateBuffer(Renderer->DeviceContext, Renderer->CameraBuffer, 
+                 &Renderer->Camera, sizeof(Renderer->Camera));
+    
+    Refresh(Renderer);
 }
 
 internal void
 ResizeResources(dx_renderer *Renderer, int NewWidth, int NewHeight)
 {
-    //Panic("No resize resource yet");
+    Panic("No resize resource yet");
 }
 
 internal void
@@ -329,12 +350,8 @@ Render(dx_renderer *Renderer, camera *Camera, f32 T)
     
     Renderer->Context.Time = T;
     
-    D3D11_MAPPED_SUBRESOURCE MappedResource = {};
-    HRESULT ContextIsMapped = DeviceContext->Map(Renderer->ContextBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedResource);
-    ASSERT(SUCCEEDED(ContextIsMapped));
-    context_data *MappedContext = (context_data *)MappedResource.pData;
-    *MappedContext = Renderer->Context;
-    DeviceContext->Unmap(Renderer->ContextBuffer, 0);
+    UpdateBuffer(DeviceContext, Renderer->ContextBuffer, 
+                 &Renderer->Context, sizeof(Renderer->Context));
     
     int BufferIndex = Renderer->BufferIndex;
     int LastBufferIndex = Renderer->LastBufferIndex;

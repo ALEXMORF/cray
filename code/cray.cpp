@@ -16,9 +16,9 @@
 /*TODO(chen):
 
 . switch to dx11 for the renderer
--   read about HLSL optimization
+-   Re-enable UI
 -   try cache Loads, see if it goes faster
--   Allow movement, refresh, and window resize, fullscrene again
+-   Allow window resize, fullscrene again
  . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
 -   Implement stretchy buffer
 -   replace vertices and triangles structs as they are unnecessary
@@ -110,16 +110,14 @@ RunCRay(app_memory *Memory, input *Input, f32 dT,
     }
 #endif
     
-    v3 LastCamP = CRay->Camera.P;
-    v3 LastCamLookAt = CRay->Camera.LookAt;
     HandleInput(&CRay->Camera, Input, dT);
-    if (LastCamP != CRay->Camera.P ||
-        LastCamLookAt != CRay->Camera.LookAt)
+    if (CRay->Camera.P != CRay->Renderer.Camera.P ||
+        CRay->Camera.LookAt != CRay->Renderer.Camera.LookAt)
     {
-        Refresh(&CRay->Renderer);
+        RefreshCamera(&CRay->Renderer, &CRay->Camera);
     }
     
-    ResizeResources(&CRay->Renderer, Width, Height);
+    //ResizeResources(&CRay->Renderer, Width, Height);
     Render(&CRay->Renderer, &CRay->Camera, CRay->T);
     
     //ImGui::Render();

@@ -1,3 +1,5 @@
+#include <imgui_impl_dx11.cpp>
+
 internal ID3DBlob *
 CompileDXShader(LPCWSTR Path, char *EntryPoint, char *Target, UINT Flags)
 {
@@ -184,6 +186,10 @@ InitDXRenderer(HWND Window, camera *Camera)
         DeviceContext->RSSetState(Renderer.RasterizerState);
     }
     
+    ImGui::CreateContext();
+    ImGui_ImplDX11_Init(Renderer.Device, Renderer.DeviceContext);
+    ImGui::GetIO().RenderDrawListsFn = ImGui_ImplDX11_RenderDrawData;
+    
     Renderer.BufferIndex = 0;
     Renderer.LastBufferIndex = 1;
     
@@ -219,6 +225,40 @@ Pack(bvh_entry BVHEntry)
     return PackedBVHEntry;
 }
 
+internal ID3D11Buffer *
+CreateStructuredBuffer(ID3D11Device1 *Device, void *Data, 
+                       int ElementCount, int Stride,
+                       ID3D11ShaderResourceView **BufferView_Out)
+{
+    ID3D11Buffer *Buffer = 0;
+    
+    //NOTE(chen): must be 16-byte aligned
+    ASSERT(Stride % 16 == 0);
+    
+    D3D11_BUFFER_DESC BufferDesc = {};
+    BufferDesc.ByteWidth = ElementCount * Stride;
+    BufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    BufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    BufferDesc.CPUAccessFlags = 0;
+    BufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+    BufferDesc.StructureByteStride = Stride;
+    
+    D3D11_SUBRESOURCE_DATA BufferData = {};
+    BufferData.pSysMem = Data;
+    
+    HRESULT CreatedBuffer = Device->CreateBuffer(&BufferDesc, &BufferData, &Buffer);
+    ASSERT(SUCCEEDED(CreatedBuffer));
+    
+    D3D11_SHADER_RESOURCE_VIEW_DESC BufferViewDesc = {};
+    BufferViewDesc.Format = DXGI_FORMAT_UNKNOWN;
+    BufferViewDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+    BufferViewDesc.Buffer.NumElements = ElementCount;
+    HRESULT CreatedBufferView = Device->CreateShaderResourceView(Buffer, &BufferViewDesc, BufferView_Out);
+    ASSERT(SUCCEEDED(CreatedBufferView));
+    
+    return Buffer;
+}
+
 internal void
 UploadModelToRenderer(dx_renderer *Renderer, loaded_model Model)
 {
@@ -240,32 +280,11 @@ UploadModelToRenderer(dx_renderer *Renderer, loaded_model Model)
             PackedTriangles[TriIndex] = Pack(Model.Triangles.Data[TriIndex]);
         }
         
-        //NOTE(chen): must be 16-byte aligned
-        ASSERT(sizeof(packed_triangle) % 16 == 0);
-        
-        D3D11_BUFFER_DESC TriangleBufferDesc = {};
-        TriangleBufferDesc.ByteWidth = sizeof(packed_triangle) * PackedTriangleCount;
-        TriangleBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
-        TriangleBufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-        TriangleBufferDesc.CPUAccessFlags = 0;
-        TriangleBufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-        TriangleBufferDesc.StructureByteStride = sizeof(packed_triangle);
-        
-        D3D11_SUBRESOURCE_DATA TriangleBufferData = {};
-        TriangleBufferData.pSysMem = PackedTriangles;
-        
-        HRESULT CreatedTriangleBuffer = Device->CreateBuffer(&TriangleBufferDesc, &TriangleBufferData, &Renderer->TriangleBuffer);
-        ASSERT(SUCCEEDED(CreatedTriangleBuffer));
-        
-        D3D11_SHADER_RESOURCE_VIEW_DESC TriangleBufferViewDesc = {};
-        TriangleBufferViewDesc.Format = DXGI_FORMAT_UNKNOWN;
-        TriangleBufferViewDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-        TriangleBufferViewDesc.Buffer.NumElements = PackedTriangleCount;
-        HRESULT CreatedTriangleBufferView = Device->CreateShaderResourceView(
-            Renderer->TriangleBuffer,
-            &TriangleBufferViewDesc,
-            &Renderer->TriangleBufferView);
-        ASSERT(SUCCEEDED(CreatedTriangleBufferView));
+        Renderer->TriangleBuffer = CreateStructuredBuffer(Device,
+                                                          PackedTriangles, 
+                                                          PackedTriangleCount,
+                                                          sizeof(packed_triangle),
+                                                          &Renderer->TriangleBufferView);
     }
     RewindTempArenaToSavedOffset();
     
@@ -279,32 +298,11 @@ UploadModelToRenderer(dx_renderer *Renderer, loaded_model Model)
             PackedBVH[EntryIndex] = Pack(Model.BVH.Data[EntryIndex]);
         }
         
-        //NOTE(chen): must be 16-byte aligned
-        ASSERT(sizeof(packed_bvh_entry) % 16 == 0);
-        
-        D3D11_BUFFER_DESC BVHBufferDesc = {};
-        BVHBufferDesc.ByteWidth = sizeof(packed_bvh_entry) * PackedBVHCount;
-        BVHBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
-        BVHBufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-        BVHBufferDesc.CPUAccessFlags = 0;
-        BVHBufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-        BVHBufferDesc.StructureByteStride = sizeof(packed_bvh_entry);
-        
-        D3D11_SUBRESOURCE_DATA BVHBufferData = {};
-        BVHBufferData.pSysMem = PackedBVH;
-        
-        HRESULT CreatedBVHBuffer = Device->CreateBuffer(&BVHBufferDesc, &BVHBufferData, &Renderer->BVHBuffer);
-        ASSERT(SUCCEEDED(CreatedBVHBuffer));
-        
-        D3D11_SHADER_RESOURCE_VIEW_DESC BVHBufferViewDesc = {};
-        BVHBufferViewDesc.Format = DXGI_FORMAT_UNKNOWN;
-        BVHBufferViewDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-        BVHBufferViewDesc.Buffer.NumElements = PackedBVHCount;
-        HRESULT CreatedBVHBufferView = Device->CreateShaderResourceView(
-            Renderer->BVHBuffer,
-            &BVHBufferViewDesc,
-            &Renderer->BVHBufferView);
-        ASSERT(SUCCEEDED(CreatedBVHBufferView));
+        Renderer->BVHBuffer = CreateStructuredBuffer(Device, 
+                                                     PackedBVH, 
+                                                     PackedBVHCount,
+                                                     sizeof(packed_bvh_entry),
+                                                     &Renderer->BVHBufferView);
     }
     RewindTempArenaToSavedOffset();
     
@@ -325,10 +323,36 @@ UpdateBuffer(ID3D11DeviceContext1 *DeviceContext, ID3D11Buffer *Buffer, void *Da
     DeviceContext->Unmap(Buffer, 0);
 }
 
+//NOTE(chen): this is for determining if state requires refreshing
+internal b32
+NeedsRefresh(render_settings Old, render_settings New)
+{
+    b32 Result = false;
+    
+    Result = Result || Old.FOV != New.FOV;
+    Result = Result || Old.RasterizeFirstBounce != New.RasterizeFirstBounce;
+    Result = Result || Old.MaxBounceCount != New.MaxBounceCount;
+    Result = Result || Old.EnableGroundPlane != New.EnableGroundPlane;
+    Result = Result || Old.L != New.L;
+    Result = Result || Old.SunRadiance != New.SunRadiance;
+    Result = Result || Old.Zenith != New.Zenith;
+    Result = Result || Old.Azimuth != New.Azimuth;
+    
+    return Result;
+}
+
 internal void
 Refresh(dx_renderer *Renderer)
 {
     Renderer->Context.SampleCountSoFar = 0;
+}
+
+internal void
+RefreshSettings(dx_renderer *Renderer)
+{
+    UpdateBuffer(Renderer->DeviceContext, Renderer->SettingsBuffer, 
+                 &Renderer->Settings, sizeof(Renderer->Settings));
+    Refresh(Renderer);
 }
 
 internal void
@@ -338,7 +362,6 @@ RefreshCamera(dx_renderer *Renderer, camera *Camera)
     Renderer->Camera.LookAt = Camera->LookAt;
     UpdateBuffer(Renderer->DeviceContext, Renderer->CameraBuffer, 
                  &Renderer->Camera, sizeof(Renderer->Camera));
-    
     Refresh(Renderer);
 }
 

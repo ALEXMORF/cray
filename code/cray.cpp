@@ -1,14 +1,13 @@
-#include <imgui.h>
+#include "cray.h"
+
 #include <imgui.cpp>
 #include <imgui_draw.cpp>
-
-#include "cray.h"
+#include <imgui_widgets.cpp>
 
 #include "cray_memory.cpp"
 #include "cray_obj.cpp"
 #include "cray_bvh.cpp"
 #include "cray_load_model.cpp"
-//#include "cray_gl_renderer.cpp"
 #include "cray_camera.cpp"
 #include "cray_dx_renderer.cpp"
 #include "cray_ui.cpp"
@@ -16,10 +15,9 @@
 /*TODO(chen):
 
 . switch to dx11 for the renderer
--   Re-enable UI
 -   Bake HLSL code
 -   try cache Loads, see if it goes faster
--   Allow window resize, fullscrene again
+-   Allow window resize, fullscreen again
  . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
 -   Implement stretchy buffer
 -   replace vertices and triangles structs as they are unnecessary
@@ -43,6 +41,7 @@
 . Allow multiple models
 . Manipulator widget
 . Model level partitioning
+- Multi-threaded UI so it doesn't get blocked by the path tracer?
 . Pull CRay out as a separate renderer
 . drag and drop models: https://stackoverflow.com/questions/12345435/drag-and-drop-support-for-win32-gui 
 . A more compressed 3D mesh storage 
@@ -85,31 +84,29 @@ RunCRay(app_memory *Memory, input *Input, f32 dT,
         CRay->Model = LoadModel(GlobalPrefabs[0], &GlobalTempArena);
         UploadModelToRenderer(&CRay->Renderer, CRay->Model);
         
-        CRay->ShowUI = false;
+        CRay->ShowUI = true;
         
         Memory->IsInitialized = true;
     }
     Clear(&GlobalTempArena);
     CRay->T += dT;
     
-    //UINewFrame(Input, Width, Height, dT);
+    UINewFrame(Input, Width, Height, dT);
     
     if (Input->Keys['Q'])
     {
         CRay->ShowUI = true;
     }
     
-#if 0
     render_settings OldSettings = CRay->Renderer.Settings;
     if (CRay->ShowUI)
     {
         DoUI(CRay, Width, Height, dT);
     }
-    if (OldSettings != CRay->Renderer.Settings)
+    if (NeedsRefresh(OldSettings, CRay->Renderer.Settings))
     {
-        Refresh(&CRay->Renderer);
+        RefreshSettings(&CRay->Renderer);
     }
-#endif
     
     HandleInput(&CRay->Camera, Input, dT);
     if (CRay->Camera.P != CRay->Renderer.Camera.P ||
@@ -120,7 +117,6 @@ RunCRay(app_memory *Memory, input *Input, f32 dT,
     
     //ResizeResources(&CRay->Renderer, Width, Height);
     Render(&CRay->Renderer, &CRay->Camera, CRay->T);
-    
-    //ImGui::Render();
+    ImGui::Render();
     Present(&CRay->Renderer);
 }

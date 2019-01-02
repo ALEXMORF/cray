@@ -25,6 +25,7 @@ UINewFrame(input *Input, int Width, int Height, f32 dT)
         }
     }
     
+    ImGui_ImplDX11_NewFrame();
     ImGui::NewFrame();
     
     Input->KeyboardIsCaptured = IO.WantCaptureKeyboard;
@@ -34,7 +35,6 @@ UINewFrame(input *Input, int Width, int Height, f32 dT)
 internal void
 DoUI(cray *CRay, int Width, int Height, f32 dT)
 {
-#if 0
     ImGui::Begin("CRay", 0, ImGuiWindowFlags_AlwaysAutoResize);
     
     ImGui::Text("Model Loading time: %.3f seconds", CRay->Model.ModelLoadingTime);
@@ -66,7 +66,7 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
         ImGui::DragFloat3("Sun Radiance", (f32 *)&Settings->SunRadiance, 0.01f);
         ImGui::DragFloat3("Zenith", (f32 *)&Settings->Zenith, 0.01f);
         ImGui::DragFloat3("Azimuth", (f32 *)&Settings->Azimuth, 0.01f);
-        ImGui::DragFloat("Exposure", &CRay->Renderer.Exposure, 0.01f);
+        ImGui::DragFloat("Exposure", &CRay->Renderer.Settings.Exposure, 0.01f);
     }
     if (ImGui::Button("Load Model"))
     {
@@ -91,7 +91,6 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
             {
                 CRay->Model = LoadModel(GlobalPrefabs[ChosenPrefabIndex], &GlobalTempArena);
                 UploadModelToRenderer(&CRay->Renderer, CRay->Model);
-                Refresh(&CRay->Renderer);
             }
             ImGui::CloseCurrentPopup();
         }
@@ -111,5 +110,4 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
     }
     
     ImGui::End();
-#endif
 }

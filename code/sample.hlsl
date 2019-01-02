@@ -505,8 +505,6 @@ float4 main(pixel Pixel): SV_TARGET
         
         if (Hit.T > T_MIN && Hit.T < T_MAX)
         {
-            Hit.N = dot(Hit.N, CurrRd) < 0.0? Hit.N: -Hit.N;
-            
             Radiance += Attenuation*Hit.Emission;
             Attenuation *= Hit.Albedo;
             CurrRo = CurrRo + (Hit.T - T_MIN) * CurrRd;

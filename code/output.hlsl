@@ -12,7 +12,7 @@ cbuffer Settings: register(b0)
     float3 Azimuth;
 };
 
-Texture2D PrevSamplesTex: register(t2);
+Texture2D HDRInputTex: register(t2);
 
 SamplerState NearestSampler
 {
@@ -32,7 +32,7 @@ float4 main(pixel Pixel): SV_TARGET
     float2 TexCoord = 0.5 * Pixel.P + 0.5;
     TexCoord.y = 1.0 - TexCoord.y;
     
-    float3 Col = PrevSamplesTex.Sample(NearestSampler, TexCoord).rgb;
+    float3 Col = HDRInputTex.Sample(NearestSampler, TexCoord).rgb;
     
     Col = 1.0 - exp(-Exposure * Col);
     Col = sqrt(Col);

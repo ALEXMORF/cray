@@ -6,7 +6,6 @@
 #include "cray_obj.h"
 #include "cray_bvh.h"
 #include "cray_load_model.h"
-//#include "cray_gl_renderer.h"
 #include "cray_camera.h"
 #include "cray_dx_renderer.h"
 
@@ -33,7 +32,6 @@ struct input
 struct cray
 {
     memory_arena MainArena;
-    //gl_renderer Renderer;
     dx_renderer Renderer;
     loaded_model Model;
     camera Camera;

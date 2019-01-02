@@ -50,9 +50,13 @@ InitDXRenderer(HWND Window, camera *Camera)
         D3D_FEATURE_LEVEL_10_1,
         D3D_FEATURE_LEVEL_10_0,
     };
+    UINT DeviceFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+#if CRAY_DEBUG
+    DeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
     HRESULT CreatedDevice = D3D11CreateDevice(0, 
                                               D3D_DRIVER_TYPE_HARDWARE,
-                                              0, D3D11_CREATE_DEVICE_DEBUG|D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+                                              0, DeviceFlags,
                                               FeatureLevels, ARRAY_COUNT(FeatureLevels),
                                               D3D11_SDK_VERSION, &TempDevice,
                                               0, &TempDeviceContext);
@@ -91,8 +95,11 @@ InitDXRenderer(HWND Window, camera *Camera)
                                             0, &Renderer.RenderTargetView);
     
     UINT CompilerFlags = D3DCOMPILE_ENABLE_STRICTNESS;
+#if CRAY_DEBUG
     CompilerFlags |= D3DCOMPILE_DEBUG;
-    //CompilerFlags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#else
+    CompilerFlags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#endif
     
     ID3DBlob *FullscreenVSCode = CompileDXShader(L"../code/fullscreen.hlsl", "main", "vs_5_0", CompilerFlags);
     ID3DBlob *SamplePSCode = CompileDXShader(L"../code/sample.hlsl", "main", "ps_5_0", CompilerFlags);

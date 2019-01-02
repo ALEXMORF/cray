@@ -99,6 +99,7 @@ struct dx_renderer
     ID3D11Buffer *CameraBuffer;
     ID3D11Buffer *ContextBuffer;
     
+    render_settings OldSettings;
     render_settings Settings;
     camera_data Camera;
     context_data Context;

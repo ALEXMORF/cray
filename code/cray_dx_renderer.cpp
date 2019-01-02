@@ -1,7 +1,8 @@
 #include <imgui_impl_dx11.cpp>
+#include "cray_hlsl_code.h"
 
 internal ID3DBlob *
-CompileDXShader(LPCWSTR Path, char *EntryPoint, char *Target, UINT Flags)
+CompileDXShaderFromFile(LPCWSTR Path, char *EntryPoint, char *Target, UINT Flags)
 {
     ID3DBlob *CompiledCode = 0;
     
@@ -11,6 +12,27 @@ CompileDXShader(LPCWSTR Path, char *EntryPoint, char *Target, UINT Flags)
                                                 Target, Flags, 
                                                 0, &CompiledCode, 
                                                 &ShaderError);
+    if (FAILED(CompiledShader))
+    {
+        Panic("%s Error: %s", Target, (char *)ShaderError->GetBufferPointer());
+    }
+    
+    return CompiledCode;
+}
+
+internal ID3DBlob *
+CompileDXShader(char *Name, char *SourceCode, 
+                char *EntryPoint, char *Target, UINT Flags)
+{
+    ID3DBlob *CompiledCode = 0;
+    
+    ID3DBlob *ShaderError = 0;
+    HRESULT CompiledShader = D3DCompile(SourceCode, 
+                                        strlen(SourceCode), 
+                                        Name, 0, 0, 
+                                        EntryPoint, Target,
+                                        Flags, 0, &CompiledCode,
+                                        &ShaderError);
     if (FAILED(CompiledShader))
     {
         Panic("%s Error: %s", Target, (char *)ShaderError->GetBufferPointer());
@@ -131,9 +153,9 @@ InitDXRenderer(HWND Window, camera *Camera)
     UINT CompilerFlags = D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #endif
     
-    ID3DBlob *FullscreenVSCode = CompileDXShader(L"../code/fullscreen.hlsl", "main", "vs_5_0", CompilerFlags);
-    ID3DBlob *SamplePSCode = CompileDXShader(L"../code/sample.hlsl", "main", "ps_5_0", CompilerFlags);
-    ID3DBlob *OutputPSCode = CompileDXShader(L"../code/output.hlsl", "main", "ps_5_0", CompilerFlags);
+    ID3DBlob *FullscreenVSCode = CompileDXShader("fullscreen.hlsl", fullscreen, "main", "vs_5_0", CompilerFlags);
+    ID3DBlob *SamplePSCode = CompileDXShader("sample.hlsl", sample, "main", "ps_5_0", CompilerFlags);
+    ID3DBlob *OutputPSCode = CompileDXShader("output.hlsl", output, "main", "ps_5_0", CompilerFlags);
     Renderer.Device->CreateVertexShader(FullscreenVSCode->GetBufferPointer(), FullscreenVSCode->GetBufferSize(), 0, &Renderer.FullscreenVS);
     Renderer.Device->CreatePixelShader(SamplePSCode->GetBufferPointer(), SamplePSCode->GetBufferSize(), 0, &Renderer.SamplePS);
     Renderer.Device->CreatePixelShader(OutputPSCode->GetBufferPointer(), OutputPSCode->GetBufferSize(), 0, &Renderer.OutputPS);
@@ -323,7 +345,7 @@ UpdateBuffer(ID3D11DeviceContext1 *DeviceContext, ID3D11Buffer *Buffer, void *Da
     DeviceContext->Unmap(Buffer, 0);
 }
 
-//NOTE(chen): this is for determining if state requires refreshing
+//NOTE(chen): this is for determining if samples need to be refreshed
 internal b32
 NeedsRefresh(render_settings Old, render_settings New)
 {
@@ -341,6 +363,15 @@ NeedsRefresh(render_settings Old, render_settings New)
     return Result;
 }
 
+bool operator==(render_settings A, render_settings B)
+{
+    return memcpy(&A, &B, sizeof(A)) == 0;
+}
+bool operator!=(render_settings A, render_settings B)
+{
+    return !(A == B);
+}
+
 internal void
 Refresh(dx_renderer *Renderer)
 {
@@ -350,8 +381,6 @@ Refresh(dx_renderer *Renderer)
 internal void
 RefreshSettings(dx_renderer *Renderer)
 {
-    UpdateBuffer(Renderer->DeviceContext, Renderer->SettingsBuffer, 
-                 &Renderer->Settings, sizeof(Renderer->Settings));
     Refresh(Renderer);
 }
 
@@ -380,6 +409,12 @@ Render(dx_renderer *Renderer, camera *Camera, f32 T)
     
     UpdateBuffer(DeviceContext, Renderer->ContextBuffer, 
                  &Renderer->Context, sizeof(Renderer->Context));
+    if (Renderer->OldSettings != Renderer->Settings)
+    {
+        UpdateBuffer(Renderer->DeviceContext, Renderer->SettingsBuffer, 
+                     &Renderer->Settings, sizeof(Renderer->Settings));
+        Renderer->OldSettings = Renderer->Settings;
+    }
     
     int BufferIndex = Renderer->BufferIndex;
     int LastBufferIndex = Renderer->LastBufferIndex;

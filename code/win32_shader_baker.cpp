@@ -24,7 +24,7 @@ char *ReadEntireFile(char *Path)
 
 int main()
 {
-    char *BakedFilename = "../code/cray_gl_shader_code.h";
+    char *BakedFilename = "../code/cray_hlsl_code.h";
     
     printf("baking shader code into %s\n", BakedFilename);
     
@@ -44,7 +44,8 @@ int main()
             } 
             else 
             {
-                if (strcmp("glsl", entry.cFileName + strlen(entry.cFileName) - 4) == 0)
+                char code_suffix[] = "hlsl";
+                if (strcmp(code_suffix, entry.cFileName + strlen(entry.cFileName) - strlen(code_suffix)) == 0)
                 {
                     char FullPath[255];
                     snprintf(FullPath, sizeof(FullPath), "../code/%s", entry.cFileName);

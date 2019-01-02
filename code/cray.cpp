@@ -16,6 +16,7 @@
 
 . switch to dx11 for the renderer
 -   Bake HLSL code
+-   Enable LoadModel again
 -   try cache Loads, see if it goes faster
 -   Allow window resize, fullscreen again
  . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
@@ -105,7 +106,7 @@ RunCRay(app_memory *Memory, input *Input, f32 dT,
     }
     if (NeedsRefresh(OldSettings, CRay->Renderer.Settings))
     {
-        RefreshSettings(&CRay->Renderer);
+        Refresh(&CRay->Renderer);
     }
     
     HandleInput(&CRay->Camera, Input, dT);

@@ -16,8 +16,10 @@
 /*TODO(chen):
 
 . switch to dx11 for the renderer
--   port the sampler shader code over
 -   add volatile sampler data of renderer, needs per-frame updating UpdateSubresource()
+-   remove hard coded constants
+-   read about HLSL optimization
+-   try cache Loads, see if it goes faster
  -   a switch to toggle compiler optimization
 -   a switch to toggle device's debug layer
 . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 

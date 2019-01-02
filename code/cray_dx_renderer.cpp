@@ -92,6 +92,7 @@ InitDXRenderer(HWND Window, camera *Camera)
     
     UINT CompilerFlags = D3DCOMPILE_ENABLE_STRICTNESS;
     CompilerFlags |= D3DCOMPILE_DEBUG;
+    //CompilerFlags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
     
     ID3DBlob *FullscreenVSCode = CompileDXShader(L"../code/fullscreen.hlsl", "main", "vs_5_0", CompilerFlags);
     ID3DBlob *SamplePSCode = CompileDXShader(L"../code/sample.hlsl", "main", "ps_5_0", CompilerFlags);

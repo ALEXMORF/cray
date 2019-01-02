@@ -41,7 +41,6 @@ struct bvh_node
 
 struct bvh_entry
 {
-    //NOTE(chen): bound
     v3 BoundMin;
     v3 BoundMax;
     

@@ -16,13 +16,10 @@
 /*TODO(chen):
 
 . switch to dx11 for the renderer
--   add volatile sampler data of renderer, needs per-frame updating UpdateSubresource()
--   remove hard coded constants
+-   implement the old rendering infrastructure
 -   read about HLSL optimization
 -   try cache Loads, see if it goes faster
- -   a switch to toggle compiler optimization
--   a switch to toggle device's debug layer
-. Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
+ . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
 -   Implement stretchy buffer
 -   replace vertices and triangles structs as they are unnecessary
 -   use stretchy buffer for all allocations done in LoadModel()

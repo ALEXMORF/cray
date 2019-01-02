@@ -90,9 +90,34 @@ InitDXRenderer(HWND Window, camera *Camera)
                                                                0, 0, &Renderer.SwapChain);
     ASSERT(SUCCEEDED(CreatedSwapChain));
     
-    Renderer.SwapChain->GetBuffer(0, IID_PPV_ARGS(&Renderer.RenderTarget));
-    Renderer.Device->CreateRenderTargetView(Renderer.RenderTarget,
-                                            0, &Renderer.RenderTargetView);
+    Renderer.SwapChain->GetBuffer(0, IID_PPV_ARGS(&Renderer.BackBuffer));
+    Renderer.Device->CreateRenderTargetView(Renderer.BackBuffer,
+                                            0, &Renderer.BackBufferView);
+    D3D11_TEXTURE2D_DESC BackBufferDesc = {};
+    Renderer.BackBuffer->GetDesc(&BackBufferDesc);
+    
+    for (int BufferIndex = 0; BufferIndex < 2; ++BufferIndex)
+    {
+        D3D11_TEXTURE2D_DESC TextureDesc = {};
+        TextureDesc.Width = BackBufferDesc.Width;
+        TextureDesc.Height = BackBufferDesc.Height;
+        TextureDesc.MipLevels = 1;
+        TextureDesc.ArraySize = 1;
+        TextureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+        TextureDesc.SampleDesc.Count = 1;
+        TextureDesc.SampleDesc.Quality = 0;
+        TextureDesc.Usage = D3D11_USAGE_DEFAULT;
+        TextureDesc.BindFlags = D3D11_BIND_RENDER_TARGET;
+        TextureDesc.CPUAccessFlags = 0;
+        TextureDesc.MiscFlags = 0;
+        
+        HRESULT CreatedTexture = Renderer.Device->CreateTexture2D(&TextureDesc, 0, Renderer.SamplerBuffers + BufferIndex);
+        ASSERT(SUCCEEDED(CreatedTexture));
+        
+        HRESULT CreatedRTV = Renderer.Device->CreateRenderTargetView(Renderer.SamplerBuffers[BufferIndex], 
+                                                                     0, Renderer.SamplerBufferViews + BufferIndex);
+        ASSERT(SUCCEEDED(CreatedRTV));
+    }
     
     UINT CompilerFlags = D3DCOMPILE_ENABLE_STRICTNESS;
 #if CRAY_DEBUG
@@ -125,9 +150,11 @@ InitDXRenderer(HWND Window, camera *Camera)
     
     Renderer.Camera.P = Camera->P;
     Renderer.Camera.LookAt = Camera->LookAt;
+    Renderer.Context.AspectRatio = (f32)BackBufferDesc.Width / (f32)BackBufferDesc.Height;
     
     Renderer.SettingsBuffer = CreateDynamicConstantBuffer(Renderer.Device, &Renderer.Settings, sizeof(Renderer.Settings));
     Renderer.CameraBuffer = CreateDynamicConstantBuffer(Renderer.Device, &Renderer.Camera, sizeof(Renderer.Camera));
+    Renderer.ContextBuffer = CreateDynamicConstantBuffer(Renderer.Device, &Renderer.Context, sizeof(Renderer.Context));
     
     //NOTE(chen): set all states
     {   
@@ -136,25 +163,22 @@ InitDXRenderer(HWND Window, camera *Camera)
         ID3D11Buffer *ConstantBuffers[] = {
             Renderer.SettingsBuffer,
             Renderer.CameraBuffer,
+            Renderer.ContextBuffer,
         };
         DeviceContext->PSSetConstantBuffers(0, ARRAY_COUNT(ConstantBuffers), 
                                             ConstantBuffers);
-        D3D11_TEXTURE2D_DESC RenderTargetDesc = {};
-        Renderer.RenderTarget->GetDesc(&RenderTargetDesc);
-        
         DeviceContext->IASetInputLayout(0);
         DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         DeviceContext->VSSetShader(Renderer.FullscreenVS, 0, 0);
         DeviceContext->PSSetShader(Renderer.SamplePS, 0, 0);
         
         D3D11_VIEWPORT Viewport = {};
-        Viewport.Width = (f32)RenderTargetDesc.Width;
-        Viewport.Height = (f32)RenderTargetDesc.Height;
+        Viewport.Width = (f32)BackBufferDesc.Width;
+        Viewport.Height = (f32)BackBufferDesc.Height;
         Viewport.MinDepth = 0.0f;
         Viewport.MaxDepth = 1.0f;
         DeviceContext->RSSetViewports(1, &Viewport);
         DeviceContext->RSSetState(Renderer.RasterizerState);
-        DeviceContext->OMSetRenderTargets(1, &Renderer.RenderTargetView, 0);
     }
     
     return Renderer;
@@ -295,12 +319,18 @@ ResizeResources(dx_renderer *Renderer, int NewWidth, int NewHeight)
 internal void
 Render(dx_renderer *Renderer, camera *Camera, f32 T)
 {
-    if (!Renderer->TriangleBufferView || !Renderer->BVHBufferView)
-    {
-        Panic("No triangle buffer or BVH buffer created");
-    }
+    ID3D11DeviceContext1 *DeviceContext = Renderer->DeviceContext;
     
-    ID3D11DeviceContext *DeviceContext = Renderer->DeviceContext;
+    Renderer->Context.Time = T;
+    
+    D3D11_MAPPED_SUBRESOURCE MappedResource = {};
+    HRESULT ContextIsMapped = DeviceContext->Map(Renderer->ContextBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedResource);
+    ASSERT(SUCCEEDED(ContextIsMapped));
+    context_data *MappedContext = (context_data *)MappedResource.pData;
+    *MappedContext = Renderer->Context;
+    DeviceContext->Unmap(Renderer->ContextBuffer, 0);
+    
+    DeviceContext->OMSetRenderTargets(1, &Renderer->BackBufferView, 0);
     DeviceContext->Draw(3, 0);
 }
 

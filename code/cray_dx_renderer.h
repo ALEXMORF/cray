@@ -66,13 +66,23 @@ struct camera_data
     u32 Pad2;
 };
 
+struct context_data
+{
+    f32 Time;
+    i32 SampleCountSoFar;
+    f32 AspectRatio;
+    u32 Pad;
+};
+
 struct dx_renderer
 {
     ID3D11Device1 *Device;
     ID3D11DeviceContext1 *DeviceContext;
     IDXGISwapChain1 *SwapChain;
-    ID3D11Texture2D *RenderTarget;
-    ID3D11RenderTargetView *RenderTargetView;
+    ID3D11Texture2D *BackBuffer;
+    ID3D11RenderTargetView *BackBufferView;
+    ID3D11Texture2D *SamplerBuffers[2];
+    ID3D11RenderTargetView *SamplerBufferViews[2];
     
     ID3D11VertexShader *FullscreenVS;
     ID3D11PixelShader *SamplePS;
@@ -85,8 +95,10 @@ struct dx_renderer
     
     ID3D11Buffer *SettingsBuffer;
     ID3D11Buffer *CameraBuffer;
+    ID3D11Buffer *ContextBuffer;
     
-    camera_data Camera;
     render_settings Settings;
-    f32 Exposure;
+    camera_data Camera;
+    context_data Context;
+    int BufferIndex;
 };

@@ -48,6 +48,14 @@ cbuffer Camera: register(b1)
     float3 CamLookAt;
 };
 
+cbuffer Context: register(b2)
+{
+    float Time;
+    int SampleCountSoFar;
+    float AspectRatio;
+    uint Pad;
+};
+
 StructuredBuffer<_triangle> Triangles: register(t0);
 StructuredBuffer<bvh_entry> BVH: register(t1);
 
@@ -440,10 +448,6 @@ float3 SampleDirectLight(in float3 Ro, in float3 N, in float3 L)
 
 float4 main(pixel Pixel): SV_TARGET
 {
-    //TODO(chen): hard-coded constants
-    float Time = 0.0;
-    float AspectRatio = 1280.0 / 720.0;
-    
     GlobalSeed = Pixel.P*(Time+1.0);
     
     float3 AvgRadiance = float3(0, 0, 0);

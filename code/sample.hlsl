@@ -58,6 +58,14 @@ cbuffer Context: register(b2)
 
 StructuredBuffer<_triangle> Triangles: register(t0);
 StructuredBuffer<bvh_entry> BVH: register(t1);
+Texture2D PrevSamplesTex: register(t2);
+
+SamplerState NearestSampler
+{
+    Filter = MIN_MAG_NEAREST;
+    AddressU = Clamp;
+    AddressV = Clamp;
+};
 
 struct pixel
 {
@@ -513,7 +521,14 @@ float4 main(pixel Pixel): SV_TARGET
         }
     }
     
-    Radiance = 1.0 - exp(-Exposure * Radiance);
-    Radiance = sqrt(Radiance);
-    return float4(Radiance, 1.0f);
+    float2 TexCoord = 0.5 * Pixel.P + 0.5;
+    TexCoord.y = 1.0 - TexCoord.y;
+    
+    int SampleCount = SampleCountSoFar + 1;
+    float CurrSampleWeight = 1.0 / float(SampleCount);
+    float3 PrevSamplesAvg = PrevSamplesTex.Sample(NearestSampler, TexCoord).rgb;
+    float3 SamplesAvg = ((1.0 - CurrSampleWeight) * PrevSamplesAvg + 
+                         CurrSampleWeight * Radiance);
+    
+    return float4(SamplesAvg, 1.0f);
 }

@@ -82,10 +82,12 @@ struct dx_renderer
     ID3D11Texture2D *BackBuffer;
     ID3D11RenderTargetView *BackBufferView;
     ID3D11Texture2D *SamplerBuffers[2];
-    ID3D11RenderTargetView *SamplerBufferViews[2];
+    ID3D11RenderTargetView *SamplerBufferRTVs[2];
+    ID3D11ShaderResourceView *SamplerBufferRVs[2];
     
     ID3D11VertexShader *FullscreenVS;
     ID3D11PixelShader *SamplePS;
+    ID3D11PixelShader *OutputPS;
     ID3D11RasterizerState1 *RasterizerState;
     
     ID3D11Buffer *TriangleBuffer;
@@ -100,5 +102,6 @@ struct dx_renderer
     render_settings Settings;
     camera_data Camera;
     context_data Context;
+    int LastBufferIndex;
     int BufferIndex;
 };

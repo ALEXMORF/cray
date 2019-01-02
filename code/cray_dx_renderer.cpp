@@ -103,11 +103,11 @@ InitDXRenderer(HWND Window, camera *Camera)
         TextureDesc.Height = BackBufferDesc.Height;
         TextureDesc.MipLevels = 1;
         TextureDesc.ArraySize = 1;
-        TextureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+        TextureDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
         TextureDesc.SampleDesc.Count = 1;
         TextureDesc.SampleDesc.Quality = 0;
         TextureDesc.Usage = D3D11_USAGE_DEFAULT;
-        TextureDesc.BindFlags = D3D11_BIND_RENDER_TARGET;
+        TextureDesc.BindFlags = D3D11_BIND_RENDER_TARGET|D3D11_BIND_SHADER_RESOURCE;
         TextureDesc.CPUAccessFlags = 0;
         TextureDesc.MiscFlags = 0;
         
@@ -115,21 +115,26 @@ InitDXRenderer(HWND Window, camera *Camera)
         ASSERT(SUCCEEDED(CreatedTexture));
         
         HRESULT CreatedRTV = Renderer.Device->CreateRenderTargetView(Renderer.SamplerBuffers[BufferIndex], 
-                                                                     0, Renderer.SamplerBufferViews + BufferIndex);
+                                                                     0, Renderer.SamplerBufferRTVs + BufferIndex);
         ASSERT(SUCCEEDED(CreatedRTV));
+        
+        HRESULT CreatedRV = Renderer.Device->CreateShaderResourceView(Renderer.SamplerBuffers[BufferIndex], 0, 
+                                                                      Renderer.SamplerBufferRVs + BufferIndex);
+        ASSERT(SUCCEEDED(CreatedRV));
     }
     
-    UINT CompilerFlags = D3DCOMPILE_ENABLE_STRICTNESS;
 #if CRAY_DEBUG
-    CompilerFlags |= D3DCOMPILE_DEBUG;
+    UINT CompilerFlags = D3DCOMPILE_DEBUG;
 #else
-    CompilerFlags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    UINT CompilerFlags = D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #endif
     
     ID3DBlob *FullscreenVSCode = CompileDXShader(L"../code/fullscreen.hlsl", "main", "vs_5_0", CompilerFlags);
     ID3DBlob *SamplePSCode = CompileDXShader(L"../code/sample.hlsl", "main", "ps_5_0", CompilerFlags);
+    ID3DBlob *OutputPSCode = CompileDXShader(L"../code/output.hlsl", "main", "ps_5_0", CompilerFlags);
     Renderer.Device->CreateVertexShader(FullscreenVSCode->GetBufferPointer(), FullscreenVSCode->GetBufferSize(), 0, &Renderer.FullscreenVS);
     Renderer.Device->CreatePixelShader(SamplePSCode->GetBufferPointer(), SamplePSCode->GetBufferSize(), 0, &Renderer.SamplePS);
+    Renderer.Device->CreatePixelShader(OutputPSCode->GetBufferPointer(), OutputPSCode->GetBufferSize(), 0, &Renderer.OutputPS);
     
     D3D11_RASTERIZER_DESC1 RasterizerStateDesc = {};
     RasterizerStateDesc.FillMode = D3D11_FILL_SOLID;
@@ -147,7 +152,6 @@ InitDXRenderer(HWND Window, camera *Camera)
     Renderer.Settings.SunRadiance = V3(4.0f);
     Renderer.Settings.Zenith = {0.0f, 0.44f, 2.66f};
     Renderer.Settings.Azimuth = {1.0f, 1.4f, 1.6f};
-    
     Renderer.Camera.P = Camera->P;
     Renderer.Camera.LookAt = Camera->LookAt;
     Renderer.Context.AspectRatio = (f32)BackBufferDesc.Width / (f32)BackBufferDesc.Height;
@@ -170,7 +174,6 @@ InitDXRenderer(HWND Window, camera *Camera)
         DeviceContext->IASetInputLayout(0);
         DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         DeviceContext->VSSetShader(Renderer.FullscreenVS, 0, 0);
-        DeviceContext->PSSetShader(Renderer.SamplePS, 0, 0);
         
         D3D11_VIEWPORT Viewport = {};
         Viewport.Width = (f32)BackBufferDesc.Width;
@@ -180,6 +183,9 @@ InitDXRenderer(HWND Window, camera *Camera)
         DeviceContext->RSSetViewports(1, &Viewport);
         DeviceContext->RSSetState(Renderer.RasterizerState);
     }
+    
+    Renderer.BufferIndex = 0;
+    Renderer.LastBufferIndex = 1;
     
     return Renderer;
 }
@@ -330,8 +336,21 @@ Render(dx_renderer *Renderer, camera *Camera, f32 T)
     *MappedContext = Renderer->Context;
     DeviceContext->Unmap(Renderer->ContextBuffer, 0);
     
-    DeviceContext->OMSetRenderTargets(1, &Renderer->BackBufferView, 0);
+    int BufferIndex = Renderer->BufferIndex;
+    int LastBufferIndex = Renderer->LastBufferIndex;
+    DeviceContext->OMSetRenderTargets(1, &Renderer->SamplerBufferRTVs[BufferIndex], 0);
+    DeviceContext->PSSetShaderResources(2, 1, &Renderer->SamplerBufferRVs[LastBufferIndex]);
+    DeviceContext->PSSetShader(Renderer->SamplePS, 0, 0);
     DeviceContext->Draw(3, 0);
+    
+    DeviceContext->OMSetRenderTargets(1, &Renderer->BackBufferView, 0);
+    DeviceContext->PSSetShaderResources(2, 1, &Renderer->SamplerBufferRVs[BufferIndex]);
+    DeviceContext->PSSetShader(Renderer->OutputPS, 0, 0);
+    DeviceContext->Draw(3, 0);
+    
+    Renderer->Context.SampleCountSoFar += 1;
+    Renderer->LastBufferIndex = BufferIndex;
+    Renderer->BufferIndex = (BufferIndex + 1) % 2;
 }
 
 internal void

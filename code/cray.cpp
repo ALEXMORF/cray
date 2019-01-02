@@ -16,9 +16,9 @@
 /*TODO(chen):
 
 . switch to dx11 for the renderer
--   implement the old rendering infrastructure
 -   read about HLSL optimization
 -   try cache Loads, see if it goes faster
+-   Allow movement, refresh, and window resize, fullscrene again
  . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
 -   Implement stretchy buffer
 -   replace vertices and triangles structs as they are unnecessary

@@ -113,7 +113,7 @@ cbuffer Settings: register(b0)
     int MaxBounceCount;
     bool EnableGroundPlane;
     
-    float3 L;
+    float3 NotNormalizedL;
     float3 SunRadiance;
     float3 Zenith;
     float3 Azimuth;
@@ -552,6 +552,7 @@ float4 main(pixel Pixel): SV_TARGET
     float CamZDist = 1.0 / tan(0.5 * FOV);
     float3 Rd = normalize(AspectRatio * CamX * UV.x + CamY * UV.y + CamZDist * CamZ);
     
+    float3 L = normalize(NotNormalizedL);
     float3 Radiance = float3(0, 0, 0);
     float3 Attenuation = float3(1, 1, 1);
     

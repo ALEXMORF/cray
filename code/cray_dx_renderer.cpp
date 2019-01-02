@@ -61,6 +61,12 @@ CreateDynamicConstantBuffer(ID3D11Device1 *Device, void *Data, UINT DataSize)
     return Buffer;
 }
 
+internal void
+Refresh(dx_renderer *Renderer)
+{
+    Renderer->Context.SampleCountSoFar = 0;
+}
+
 internal dx_renderer
 InitDXRenderer(HWND Window, camera *Camera)
 {
@@ -286,7 +292,12 @@ UploadModelToRenderer(dx_renderer *Renderer, loaded_model Model)
 {
     if (Renderer->TriangleBuffer || Renderer->BVHBuffer)
     {
-        Panic("not handling dynamic model loads");
+        Renderer->TriangleBufferView->Release();
+        Renderer->TriangleBuffer->Release();
+        Renderer->BVHBufferView->Release();
+        Renderer->BVHBuffer->Release();
+        
+        Refresh(Renderer);
     }
     
     ID3D11Device1 *Device = Renderer->Device;
@@ -370,18 +381,6 @@ bool operator==(render_settings A, render_settings B)
 bool operator!=(render_settings A, render_settings B)
 {
     return !(A == B);
-}
-
-internal void
-Refresh(dx_renderer *Renderer)
-{
-    Renderer->Context.SampleCountSoFar = 0;
-}
-
-internal void
-RefreshSettings(dx_renderer *Renderer)
-{
-    Refresh(Renderer);
 }
 
 internal void

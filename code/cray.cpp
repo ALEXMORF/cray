@@ -15,9 +15,6 @@
 /*TODO(chen):
 
 . switch to dx11 for the renderer
--   Bake HLSL code
--   Enable LoadModel again
--   try cache Loads, see if it goes faster
 -   Allow window resize, fullscreen again
  . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
 -   Implement stretchy buffer

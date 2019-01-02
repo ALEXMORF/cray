@@ -222,6 +222,11 @@ Pack(bvh_entry BVHEntry)
 internal void
 UploadModelToRenderer(dx_renderer *Renderer, loaded_model Model)
 {
+    if (Renderer->TriangleBuffer || Renderer->BVHBuffer)
+    {
+        Panic("not handling dynamic model loads");
+    }
+    
     ID3D11Device1 *Device = Renderer->Device;
     ID3D11DeviceContext1 *DeviceContext = Renderer->DeviceContext;
     
@@ -374,5 +379,5 @@ internal void
 Present(dx_renderer *Renderer)
 {
     DXGI_PRESENT_PARAMETERS PresentParameters = {};
-    Renderer->SwapChain->Present1(1, 0, &PresentParameters);
+    Renderer->SwapChain->Present1(0, 0, &PresentParameters);
 }

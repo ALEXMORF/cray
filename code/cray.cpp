@@ -17,6 +17,7 @@
 
 . switch to dx11 for the renderer
 -   Re-enable UI
+-   Bake HLSL code
 -   try cache Loads, see if it goes faster
 -   Allow window resize, fullscrene again
  . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 

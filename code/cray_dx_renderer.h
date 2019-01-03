@@ -72,6 +72,16 @@ struct context_data
     i32 SampleCountSoFar;
     f32 AspectRatio;
     u32 Pad;
+    
+    mat4 View;
+    mat4 Projection;
+};
+
+struct dx_render_target
+{
+    ID3D11Texture2D *Tex;
+    ID3D11RenderTargetView *RTV;
+    ID3D11ShaderResourceView *SRV;
 };
 
 struct dx_renderer
@@ -81,9 +91,12 @@ struct dx_renderer
     IDXGISwapChain1 *SwapChain;
     ID3D11Texture2D *BackBuffer;
     ID3D11RenderTargetView *BackBufferView;
-    ID3D11Texture2D *SamplerBuffers[2];
-    ID3D11RenderTargetView *SamplerBufferRTVs[2];
-    ID3D11ShaderResourceView *SamplerBufferRVs[2];
+    
+    dx_render_target SamplerBuffers[2];
+    dx_render_target PositionBuffer;
+    dx_render_target NormalBuffer;
+    dx_render_target AlbedoBuffer;
+    dx_render_target EmissionBuffer;
     
     ID3D11VertexShader *FullscreenVS;
     ID3D11PixelShader *SamplePS;

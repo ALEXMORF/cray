@@ -54,6 +54,9 @@ cbuffer Context: register(b2)
     int SampleCountSoFar;
     float AspectRatio;
     uint Pad;
+    
+    float4x4 View;
+    float4x4 Projection;
 };
 
 StructuredBuffer<_triangle> Triangles: register(t0);
@@ -373,24 +376,6 @@ contact_info Raytrace(in float3 Ro, in float3 Rd)
     return Res;
 }
 
-#if 0
-float3 SampleBvh(in float3 Ro, in float3 Rd)
-{
-    float3 Acc = float3(0, 0, 0);
-    
-    for (int EntryIndex = 0; EntryIndex < BvhEntryCount; ++EntryIndex)
-    {
-        float BoundT = RayIntersectBound(Ro, Rd, BvhEntries[EntryIndex].Bound);
-        if (BoundT != T_MAX)
-        {
-            Acc.r += 0.01;
-        }
-    }
-    
-    return Acc;
-}
-#endif
-
 float3 Ortho(in float3 X)
 {
     float3 Res;
@@ -446,11 +431,13 @@ float3 SampleDirectLight(in float3 Ro, in float3 N, in float3 L)
     
     float3 LSample = SampleCone(L, 6e-5);
     float SunLightRatio = dot(LSample, N);
-    if (SunLightRatio > 0.0 && Raytrace(Ro, LSample).T == T_MAX)
+    if (SunLightRatio > 0.0)
     {
-        Radiance = SunLightRatio*SunRadiance;
+        if (Raytrace(Ro, LSample).T == T_MAX)
+        {
+            Radiance = SunLightRatio*SunRadiance;
+        }
     }
-    
     return Radiance;
 }
 

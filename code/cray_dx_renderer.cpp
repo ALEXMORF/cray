@@ -41,6 +41,36 @@ CompileDXShader(char *Name, char *SourceCode,
     return CompiledCode;
 }
 
+internal ID3D11VertexShader *
+CreateDXVS(ID3D11Device1 *Device, char *Name, char *SourceCode,
+           char *EntryPoint, UINT CompilerFlags)
+{
+    ID3D11VertexShader *VS = 0;
+    
+    ID3DBlob *VSCode = CompileDXShader(Name, SourceCode, EntryPoint, 
+                                       "vs_5_0", CompilerFlags);
+    Device->CreateVertexShader(VSCode->GetBufferPointer(), 
+                               VSCode->GetBufferSize(), 0, &VS);
+    VSCode->Release();
+    
+    return VS;
+}
+
+internal ID3D11PixelShader *
+CreateDXPS(ID3D11Device1 *Device, char *Name, char *SourceCode,
+           char *EntryPoint, UINT CompilerFlags)
+{
+    ID3D11PixelShader *PS = 0;
+    
+    ID3DBlob *PSCode = CompileDXShader(Name, SourceCode, EntryPoint, 
+                                       "ps_5_0", CompilerFlags);
+    Device->CreatePixelShader(PSCode->GetBufferPointer(), 
+                              PSCode->GetBufferSize(), 0, &PS);
+    PSCode->Release();
+    
+    return PS;
+}
+
 internal ID3D11Buffer *
 CreateDynamicConstantBuffer(ID3D11Device1 *Device, void *Data, UINT DataSize)
 {
@@ -59,6 +89,40 @@ CreateDynamicConstantBuffer(ID3D11Device1 *Device, void *Data, UINT DataSize)
     ASSERT(SUCCEEDED(CreatedBuffer));
     
     return Buffer;
+}
+
+internal dx_render_target
+CreateDXRenderTarget(ID3D11Device1 *Device, int Width, int Height, 
+                     DXGI_FORMAT Format)
+{
+    dx_render_target RenderTarget = {};
+    
+    D3D11_TEXTURE2D_DESC TextureDesc = {};
+    TextureDesc.Width = Width;
+    TextureDesc.Height = Height;
+    TextureDesc.MipLevels = 1;
+    TextureDesc.ArraySize = 1;
+    TextureDesc.Format = Format;
+    TextureDesc.SampleDesc.Count = 1;
+    TextureDesc.SampleDesc.Quality = 0;
+    TextureDesc.Usage = D3D11_USAGE_DEFAULT;
+    TextureDesc.BindFlags = D3D11_BIND_RENDER_TARGET|D3D11_BIND_SHADER_RESOURCE;
+    TextureDesc.CPUAccessFlags = 0;
+    TextureDesc.MiscFlags = 0;
+    
+    HRESULT CreatedTexture = Device->CreateTexture2D(&TextureDesc, 0, 
+                                                     &RenderTarget.Tex);
+    ASSERT(SUCCEEDED(CreatedTexture));
+    
+    HRESULT CreatedRTV = Device->CreateRenderTargetView(RenderTarget.Tex, 
+                                                        0, &RenderTarget.RTV);
+    ASSERT(SUCCEEDED(CreatedRTV));
+    
+    HRESULT CreatedRV = Device->CreateShaderResourceView(RenderTarget.Tex, 0, 
+                                                         &RenderTarget.SRV);
+    ASSERT(SUCCEEDED(CreatedRV));
+    
+    return RenderTarget;
 }
 
 internal void
@@ -125,33 +189,28 @@ InitDXRenderer(HWND Window, camera *Camera)
                                             0, &Renderer.BackBufferView);
     D3D11_TEXTURE2D_DESC BackBufferDesc = {};
     Renderer.BackBuffer->GetDesc(&BackBufferDesc);
+    int ClientWidth = BackBufferDesc.Width;
+    int ClientHeight = BackBufferDesc.Height;
     
     for (int BufferIndex = 0; BufferIndex < 2; ++BufferIndex)
     {
-        D3D11_TEXTURE2D_DESC TextureDesc = {};
-        TextureDesc.Width = BackBufferDesc.Width;
-        TextureDesc.Height = BackBufferDesc.Height;
-        TextureDesc.MipLevels = 1;
-        TextureDesc.ArraySize = 1;
-        TextureDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-        TextureDesc.SampleDesc.Count = 1;
-        TextureDesc.SampleDesc.Quality = 0;
-        TextureDesc.Usage = D3D11_USAGE_DEFAULT;
-        TextureDesc.BindFlags = D3D11_BIND_RENDER_TARGET|D3D11_BIND_SHADER_RESOURCE;
-        TextureDesc.CPUAccessFlags = 0;
-        TextureDesc.MiscFlags = 0;
-        
-        HRESULT CreatedTexture = Renderer.Device->CreateTexture2D(&TextureDesc, 0, Renderer.SamplerBuffers + BufferIndex);
-        ASSERT(SUCCEEDED(CreatedTexture));
-        
-        HRESULT CreatedRTV = Renderer.Device->CreateRenderTargetView(Renderer.SamplerBuffers[BufferIndex], 
-                                                                     0, Renderer.SamplerBufferRTVs + BufferIndex);
-        ASSERT(SUCCEEDED(CreatedRTV));
-        
-        HRESULT CreatedRV = Renderer.Device->CreateShaderResourceView(Renderer.SamplerBuffers[BufferIndex], 0, 
-                                                                      Renderer.SamplerBufferRVs + BufferIndex);
-        ASSERT(SUCCEEDED(CreatedRV));
+        Renderer.SamplerBuffers[BufferIndex] = CreateDXRenderTarget(
+            Renderer.Device, ClientWidth, ClientHeight, 
+            DXGI_FORMAT_R16G16B16A16_FLOAT);
     }
+    Renderer.PositionBuffer = CreateDXRenderTarget(Renderer.Device, 
+                                                   ClientWidth, ClientHeight,
+                                                   DXGI_FORMAT_R16G16B16A16_FLOAT);
+    Renderer.NormalBuffer = CreateDXRenderTarget(Renderer.Device, 
+                                                 ClientWidth, ClientHeight,
+                                                 DXGI_FORMAT_R16G16B16A16_FLOAT);
+    //TODO(chen): compress these when we have a material system in place
+    Renderer.AlbedoBuffer = CreateDXRenderTarget(Renderer.Device, 
+                                                 ClientWidth, ClientHeight,
+                                                 DXGI_FORMAT_B8G8R8A8_UNORM);
+    Renderer.EmissionBuffer = CreateDXRenderTarget(Renderer.Device, 
+                                                   ClientWidth, ClientHeight,
+                                                   DXGI_FORMAT_R16G16B16A16_FLOAT);
     
 #if CRAY_DEBUG
     UINT CompilerFlags = D3DCOMPILE_DEBUG;
@@ -159,12 +218,9 @@ InitDXRenderer(HWND Window, camera *Camera)
     UINT CompilerFlags = D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #endif
     
-    ID3DBlob *FullscreenVSCode = CompileDXShader("fullscreen.hlsl", fullscreen, "main", "vs_5_0", CompilerFlags);
-    ID3DBlob *SamplePSCode = CompileDXShader("sample.hlsl", sample, "main", "ps_5_0", CompilerFlags);
-    ID3DBlob *OutputPSCode = CompileDXShader("output.hlsl", output, "main", "ps_5_0", CompilerFlags);
-    Renderer.Device->CreateVertexShader(FullscreenVSCode->GetBufferPointer(), FullscreenVSCode->GetBufferSize(), 0, &Renderer.FullscreenVS);
-    Renderer.Device->CreatePixelShader(SamplePSCode->GetBufferPointer(), SamplePSCode->GetBufferSize(), 0, &Renderer.SamplePS);
-    Renderer.Device->CreatePixelShader(OutputPSCode->GetBufferPointer(), OutputPSCode->GetBufferSize(), 0, &Renderer.OutputPS);
+    Renderer.FullscreenVS = CreateDXVS(Renderer.Device, "fullscreen.hlsl", fullscreen, "main", CompilerFlags);
+    Renderer.SamplePS = CreateDXPS(Renderer.Device, "sample.hlsl", sample, "main", CompilerFlags);
+    Renderer.OutputPS = CreateDXPS(Renderer.Device, "output.hlsl", output, "main", CompilerFlags);
     
     D3D11_RASTERIZER_DESC1 RasterizerStateDesc = {};
     RasterizerStateDesc.FillMode = D3D11_FILL_SOLID;
@@ -184,7 +240,7 @@ InitDXRenderer(HWND Window, camera *Camera)
     Renderer.Settings.Azimuth = {1.0f, 1.4f, 1.6f};
     Renderer.Camera.P = Camera->P;
     Renderer.Camera.LookAt = Camera->LookAt;
-    Renderer.Context.AspectRatio = (f32)BackBufferDesc.Width / (f32)BackBufferDesc.Height;
+    Renderer.Context.AspectRatio = (f32)ClientWidth / (f32)ClientHeight;
     
     Renderer.SettingsBuffer = CreateDynamicConstantBuffer(Renderer.Device, &Renderer.Settings, sizeof(Renderer.Settings));
     Renderer.CameraBuffer = CreateDynamicConstantBuffer(Renderer.Device, &Renderer.Camera, sizeof(Renderer.Camera));
@@ -206,8 +262,8 @@ InitDXRenderer(HWND Window, camera *Camera)
         DeviceContext->VSSetShader(Renderer.FullscreenVS, 0, 0);
         
         D3D11_VIEWPORT Viewport = {};
-        Viewport.Width = (f32)BackBufferDesc.Width;
-        Viewport.Height = (f32)BackBufferDesc.Height;
+        Viewport.Width = (f32)ClientWidth;
+        Viewport.Height = (f32)ClientHeight;
         Viewport.MinDepth = 0.0f;
         Viewport.MaxDepth = 1.0f;
         DeviceContext->RSSetViewports(1, &Viewport);
@@ -417,13 +473,13 @@ Render(dx_renderer *Renderer, camera *Camera, f32 T)
     
     int BufferIndex = Renderer->BufferIndex;
     int LastBufferIndex = Renderer->LastBufferIndex;
-    DeviceContext->OMSetRenderTargets(1, &Renderer->SamplerBufferRTVs[BufferIndex], 0);
-    DeviceContext->PSSetShaderResources(2, 1, &Renderer->SamplerBufferRVs[LastBufferIndex]);
+    DeviceContext->OMSetRenderTargets(1, &Renderer->SamplerBuffers[BufferIndex].RTV, 0);
+    DeviceContext->PSSetShaderResources(2, 1, &Renderer->SamplerBuffers[LastBufferIndex].SRV);
     DeviceContext->PSSetShader(Renderer->SamplePS, 0, 0);
     DeviceContext->Draw(3, 0);
     
     DeviceContext->OMSetRenderTargets(1, &Renderer->BackBufferView, 0);
-    DeviceContext->PSSetShaderResources(2, 1, &Renderer->SamplerBufferRVs[BufferIndex]);
+    DeviceContext->PSSetShaderResources(2, 1, &Renderer->SamplerBuffers[BufferIndex].SRV);
     DeviceContext->PSSetShader(Renderer->OutputPS, 0, 0);
     DeviceContext->Draw(3, 0);
     

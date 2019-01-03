@@ -15,11 +15,13 @@
 /*TODO(chen):
 
 . switch to dx11 for the renderer
+-   Bring back rasterization of first bounce
 -   Allow window resize, fullscreen again
  . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
 -   Implement stretchy buffer
 -   replace vertices and triangles structs as they are unnecessary
 -   use stretchy buffer for all allocations done in LoadModel()
+. HDR Environment map
 . Optimize shadow rays: don't return nearest t, instead only a boolean result is needed.
 . Better BVH subdivision termination rule
 . faster BVH traversal (stackless)
@@ -79,7 +81,7 @@ RunCRay(app_memory *Memory, input *Input, f32 dT,
         
         CRay->Camera = InitCamera();
         CRay->Renderer = InitDXRenderer(Window, &CRay->Camera);
-        CRay->Model = LoadModel(GlobalPrefabs[0], &GlobalTempArena);
+        CRay->Model = LoadModel(GlobalPrefabs[11], &GlobalTempArena);
         UploadModelToRenderer(&CRay->Renderer, CRay->Model);
         
         CRay->ShowUI = true;

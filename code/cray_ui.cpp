@@ -63,9 +63,12 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
         ImGui::InputInt("Max Bounce Count", &Settings->MaxBounceCount);
         ImGui::InputFloat("FOV", &Settings->FOV, 0.01f);
         ImGui::DragFloat3("L", (f32 *)&Settings->L, 0.01f);
-        ImGui::DragFloat3("Sun Radiance", (f32 *)&Settings->SunRadiance, 0.01f);
-        ImGui::DragFloat3("Zenith", (f32 *)&Settings->Zenith, 0.01f);
-        ImGui::DragFloat3("Azimuth", (f32 *)&Settings->Azimuth, 0.01f);
+        
+        int ColorEditFlags = ImGuiColorEditFlags_HDR;
+        
+        ImGui::ColorEdit3("Sun Radiance", (f32 *)&Settings->SunRadiance, ColorEditFlags);
+        ImGui::ColorEdit3("Zenith", (f32 *)&Settings->Zenith, ColorEditFlags);
+        ImGui::ColorEdit3("Azimuth", (f32 *)&Settings->Azimuth, ColorEditFlags);
         ImGui::DragFloat("Exposure", &CRay->Renderer.Settings.Exposure, 0.01f);
     }
     if (ImGui::Button("Load Model"))

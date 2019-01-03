@@ -49,8 +49,9 @@ CreateDXVS(ID3D11Device1 *Device, char *Name, char *SourceCode,
     
     ID3DBlob *VSCode = CompileDXShader(Name, SourceCode, EntryPoint, 
                                        "vs_5_0", CompilerFlags);
-    Device->CreateVertexShader(VSCode->GetBufferPointer(), 
-                               VSCode->GetBufferSize(), 0, &VS);
+    HRESULT CreatedShader = Device->CreateVertexShader(VSCode->GetBufferPointer(), 
+                                                       VSCode->GetBufferSize(), 0, &VS);
+    ASSERT(SUCCEEDED(CreatedShader));
     VSCode->Release();
     
     return VS;
@@ -64,8 +65,9 @@ CreateDXPS(ID3D11Device1 *Device, char *Name, char *SourceCode,
     
     ID3DBlob *PSCode = CompileDXShader(Name, SourceCode, EntryPoint, 
                                        "ps_5_0", CompilerFlags);
-    Device->CreatePixelShader(PSCode->GetBufferPointer(), 
-                              PSCode->GetBufferSize(), 0, &PS);
+    HRESULT CreatedShader = Device->CreatePixelShader(PSCode->GetBufferPointer(), 
+                                                      PSCode->GetBufferSize(), 0, &PS);
+    ASSERT(SUCCEEDED(CreatedShader));
     PSCode->Release();
     
     return PS;
@@ -217,6 +219,40 @@ InitDXRenderer(HWND Window, camera *Camera)
 #else
     UINT CompilerFlags = D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #endif
+    
+    // create GPass shaders and its input layout
+    {
+        ID3DBlob *GPassVSCode = CompileDXShader("gpass.hlsl", gpass, 
+                                                "vsmain", "vs_5_0", CompilerFlags);
+        Renderer.Device->CreateVertexShader(GPassVSCode->GetBufferPointer(), 
+                                            GPassVSCode->GetBufferSize(), 0, &Renderer.GPassVS);
+        
+        D3D11_INPUT_ELEMENT_DESC InputLayoutDesc[] =
+        {
+            {"POS", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, 
+                D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 
+                D3D11_APPEND_ALIGNED_ELEMENT, 
+                D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            {"ALBEDO", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 
+                D3D11_APPEND_ALIGNED_ELEMENT, 
+                D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            {"EMISSION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 
+                D3D11_APPEND_ALIGNED_ELEMENT, 
+                D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        };
+        HRESULT CreatedInputLayout = Renderer.Device->CreateInputLayout(
+            InputLayoutDesc, 
+            ARRAY_COUNT(InputLayoutDesc),
+            GPassVSCode->GetBufferPointer(),
+            GPassVSCode->GetBufferSize(),
+            &Renderer.GPassInputLayout);
+        ASSERT(SUCCEEDED(CreatedInputLayout));
+        
+        GPassVSCode->Release();
+        
+        Renderer.GPassPS = CreateDXPS(Renderer.Device, "gpass.hlsl", gpass, "psmain", CompilerFlags);
+    }
     
     Renderer.FullscreenVS = CreateDXVS(Renderer.Device, "fullscreen.hlsl", fullscreen, "main", CompilerFlags);
     Renderer.SamplePS = CreateDXPS(Renderer.Device, "sample.hlsl", sample, "main", CompilerFlags);
@@ -473,6 +509,8 @@ Render(dx_renderer *Renderer, camera *Camera, f32 T)
     
     int BufferIndex = Renderer->BufferIndex;
     int LastBufferIndex = Renderer->LastBufferIndex;
+    
+    DeviceContext->IASetInputLayout(0);
     DeviceContext->OMSetRenderTargets(1, &Renderer->SamplerBuffers[BufferIndex].RTV, 0);
     DeviceContext->PSSetShaderResources(2, 1, &Renderer->SamplerBuffers[LastBufferIndex].SRV);
     DeviceContext->PSSetShader(Renderer->SamplePS, 0, 0);

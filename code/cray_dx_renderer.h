@@ -98,9 +98,16 @@ struct dx_renderer
     dx_render_target AlbedoBuffer;
     dx_render_target EmissionBuffer;
     
+    // gpass
+    ID3D11VertexShader *GPassVS;
+    ID3D11PixelShader *GPassPS;
+    ID3D11InputLayout *GPassInputLayout;
+    
+    // path tracer
     ID3D11VertexShader *FullscreenVS;
     ID3D11PixelShader *SamplePS;
     ID3D11PixelShader *OutputPS;
+    
     ID3D11RasterizerState1 *RasterizerState;
     
     ID3D11Buffer *TriangleBuffer;

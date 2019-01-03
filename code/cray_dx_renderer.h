@@ -97,6 +97,9 @@ struct dx_renderer
     dx_render_target NormalBuffer;
     dx_render_target AlbedoBuffer;
     dx_render_target EmissionBuffer;
+    ID3D11Texture2D *DepthStencilBuffer;
+    ID3D11DepthStencilView *DepthStencilView;
+    ID3D11DepthStencilState *DepthStencilState;
     
     // gpass
     ID3D11VertexShader *GPassVS;
@@ -110,6 +113,8 @@ struct dx_renderer
     
     ID3D11RasterizerState1 *RasterizerState;
     
+    ID3D11Buffer *VertexBuffer;
+    int VertexCount;
     ID3D11Buffer *TriangleBuffer;
     ID3D11ShaderResourceView *TriangleBufferView;
     ID3D11Buffer *BVHBuffer;

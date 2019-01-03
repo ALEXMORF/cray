@@ -161,10 +161,13 @@ InitDXRenderer(HWND Window, camera *Camera)
     TempDevice->QueryInterface(IID_PPV_ARGS(&Renderer.Device));
     TempDeviceContext->QueryInterface(IID_PPV_ARGS(&Renderer.DeviceContext));
     
+    ID3D11Device1 *Device = Renderer.Device;
+    ID3D11DeviceContext1 *DeviceContext = Renderer.DeviceContext;
+    
     IDXGIFactory2 *Factory = 0;
     IDXGIDevice1 *DXGIDevice = 0;
     IDXGIAdapter *Adapter = 0;
-    Renderer.Device->QueryInterface(IID_PPV_ARGS(&DXGIDevice));
+    Device->QueryInterface(IID_PPV_ARGS(&DXGIDevice));
     DXGIDevice->GetAdapter(&Adapter);
     Adapter->GetParent(IID_PPV_ARGS(&Factory));
     
@@ -181,14 +184,14 @@ InitDXRenderer(HWND Window, camera *Camera)
     SwapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
     SwapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
     SwapChainDesc.Flags = 0;
-    HRESULT CreatedSwapChain = Factory->CreateSwapChainForHwnd(Renderer.Device, 
+    HRESULT CreatedSwapChain = Factory->CreateSwapChainForHwnd(Device, 
                                                                Window, &SwapChainDesc,
                                                                0, 0, &Renderer.SwapChain);
     ASSERT(SUCCEEDED(CreatedSwapChain));
     
     Renderer.SwapChain->GetBuffer(0, IID_PPV_ARGS(&Renderer.BackBuffer));
-    Renderer.Device->CreateRenderTargetView(Renderer.BackBuffer,
-                                            0, &Renderer.BackBufferView);
+    Device->CreateRenderTargetView(Renderer.BackBuffer,
+                                   0, &Renderer.BackBufferView);
     D3D11_TEXTURE2D_DESC BackBufferDesc = {};
     Renderer.BackBuffer->GetDesc(&BackBufferDesc);
     int ClientWidth = BackBufferDesc.Width;
@@ -197,22 +200,54 @@ InitDXRenderer(HWND Window, camera *Camera)
     for (int BufferIndex = 0; BufferIndex < 2; ++BufferIndex)
     {
         Renderer.SamplerBuffers[BufferIndex] = CreateDXRenderTarget(
-            Renderer.Device, ClientWidth, ClientHeight, 
+            Device, ClientWidth, ClientHeight, 
             DXGI_FORMAT_R16G16B16A16_FLOAT);
     }
-    Renderer.PositionBuffer = CreateDXRenderTarget(Renderer.Device, 
+    Renderer.PositionBuffer = CreateDXRenderTarget(Device, 
                                                    ClientWidth, ClientHeight,
                                                    DXGI_FORMAT_R16G16B16A16_FLOAT);
-    Renderer.NormalBuffer = CreateDXRenderTarget(Renderer.Device, 
+    Renderer.NormalBuffer = CreateDXRenderTarget(Device, 
                                                  ClientWidth, ClientHeight,
                                                  DXGI_FORMAT_R16G16B16A16_FLOAT);
     //TODO(chen): compress these when we have a material system in place
-    Renderer.AlbedoBuffer = CreateDXRenderTarget(Renderer.Device, 
+    Renderer.AlbedoBuffer = CreateDXRenderTarget(Device, 
                                                  ClientWidth, ClientHeight,
                                                  DXGI_FORMAT_B8G8R8A8_UNORM);
-    Renderer.EmissionBuffer = CreateDXRenderTarget(Renderer.Device, 
+    Renderer.EmissionBuffer = CreateDXRenderTarget(Device, 
                                                    ClientWidth, ClientHeight,
                                                    DXGI_FORMAT_R16G16B16A16_FLOAT);
+    
+    // depth stencil buffer
+    {
+        D3D11_TEXTURE2D_DESC DepthStencilBufferDesc = {};
+        DepthStencilBufferDesc.Width = ClientWidth;
+        DepthStencilBufferDesc.Height = ClientHeight;
+        DepthStencilBufferDesc.MipLevels = 1;
+        DepthStencilBufferDesc.ArraySize = 1;
+        DepthStencilBufferDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+        DepthStencilBufferDesc.SampleDesc.Count = 1;
+        DepthStencilBufferDesc.SampleDesc.Quality = 0;
+        DepthStencilBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+        DepthStencilBufferDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+        
+        HRESULT CreatedDepthStencil = Device->CreateTexture2D(&DepthStencilBufferDesc, 0, &Renderer.DepthStencilBuffer);
+        ASSERT(SUCCEEDED(CreatedDepthStencil));
+        
+        D3D11_DEPTH_STENCIL_DESC DepthStencilDesc = {};
+        DepthStencilDesc.DepthEnable = true;
+        DepthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+        DepthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS;
+        DepthStencilDesc.StencilEnable = false;
+        
+        HRESULT CreatedDepthStencilState = Device->CreateDepthStencilState(&DepthStencilDesc, &Renderer.DepthStencilState);
+        ASSERT(SUCCEEDED(CreatedDepthStencilState));
+        
+        D3D11_DEPTH_STENCIL_VIEW_DESC DepthStencilViewDesc = {};
+        DepthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+        DepthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+        HRESULT CreatedDepthStencilView = Device->CreateDepthStencilView(Renderer.DepthStencilBuffer, &DepthStencilViewDesc, &Renderer.DepthStencilView);
+        ASSERT(SUCCEEDED(CreatedDepthStencilView));
+    }
     
 #if CRAY_DEBUG
     UINT CompilerFlags = D3DCOMPILE_DEBUG;
@@ -224,8 +259,8 @@ InitDXRenderer(HWND Window, camera *Camera)
     {
         ID3DBlob *GPassVSCode = CompileDXShader("gpass.hlsl", gpass, 
                                                 "vsmain", "vs_5_0", CompilerFlags);
-        Renderer.Device->CreateVertexShader(GPassVSCode->GetBufferPointer(), 
-                                            GPassVSCode->GetBufferSize(), 0, &Renderer.GPassVS);
+        Device->CreateVertexShader(GPassVSCode->GetBufferPointer(), 
+                                   GPassVSCode->GetBufferSize(), 0, &Renderer.GPassVS);
         
         D3D11_INPUT_ELEMENT_DESC InputLayoutDesc[] =
         {
@@ -241,7 +276,7 @@ InitDXRenderer(HWND Window, camera *Camera)
                 D3D11_APPEND_ALIGNED_ELEMENT, 
                 D3D11_INPUT_PER_VERTEX_DATA, 0 },
         };
-        HRESULT CreatedInputLayout = Renderer.Device->CreateInputLayout(
+        HRESULT CreatedInputLayout = Device->CreateInputLayout(
             InputLayoutDesc, 
             ARRAY_COUNT(InputLayoutDesc),
             GPassVSCode->GetBufferPointer(),
@@ -251,18 +286,18 @@ InitDXRenderer(HWND Window, camera *Camera)
         
         GPassVSCode->Release();
         
-        Renderer.GPassPS = CreateDXPS(Renderer.Device, "gpass.hlsl", gpass, "psmain", CompilerFlags);
+        Renderer.GPassPS = CreateDXPS(Device, "gpass.hlsl", gpass, "psmain", CompilerFlags);
     }
     
-    Renderer.FullscreenVS = CreateDXVS(Renderer.Device, "fullscreen.hlsl", fullscreen, "main", CompilerFlags);
-    Renderer.SamplePS = CreateDXPS(Renderer.Device, "sample.hlsl", sample, "main", CompilerFlags);
-    Renderer.OutputPS = CreateDXPS(Renderer.Device, "output.hlsl", output, "main", CompilerFlags);
+    Renderer.FullscreenVS = CreateDXVS(Device, "fullscreen.hlsl", fullscreen, "main", CompilerFlags);
+    Renderer.SamplePS = CreateDXPS(Device, "sample.hlsl", sample, "main", CompilerFlags);
+    Renderer.OutputPS = CreateDXPS(Device, "output.hlsl", output, "main", CompilerFlags);
     
     D3D11_RASTERIZER_DESC1 RasterizerStateDesc = {};
     RasterizerStateDesc.FillMode = D3D11_FILL_SOLID;
     RasterizerStateDesc.CullMode = D3D11_CULL_NONE;
     RasterizerStateDesc.FrontCounterClockwise = true;
-    HRESULT CreatedRasterizerState = Renderer.Device->CreateRasterizerState1(&RasterizerStateDesc, &Renderer.RasterizerState);
+    HRESULT CreatedRasterizerState = Device->CreateRasterizerState1(&RasterizerStateDesc, &Renderer.RasterizerState);
     ASSERT(SUCCEEDED(CreatedRasterizerState));
     
     Renderer.Settings.Exposure = 0.5f;
@@ -278,14 +313,12 @@ InitDXRenderer(HWND Window, camera *Camera)
     Renderer.Camera.LookAt = Camera->LookAt;
     Renderer.Context.AspectRatio = (f32)ClientWidth / (f32)ClientHeight;
     
-    Renderer.SettingsBuffer = CreateDynamicConstantBuffer(Renderer.Device, &Renderer.Settings, sizeof(Renderer.Settings));
-    Renderer.CameraBuffer = CreateDynamicConstantBuffer(Renderer.Device, &Renderer.Camera, sizeof(Renderer.Camera));
-    Renderer.ContextBuffer = CreateDynamicConstantBuffer(Renderer.Device, &Renderer.Context, sizeof(Renderer.Context));
+    Renderer.SettingsBuffer = CreateDynamicConstantBuffer(Device, &Renderer.Settings, sizeof(Renderer.Settings));
+    Renderer.CameraBuffer = CreateDynamicConstantBuffer(Device, &Renderer.Camera, sizeof(Renderer.Camera));
+    Renderer.ContextBuffer = CreateDynamicConstantBuffer(Device, &Renderer.Context, sizeof(Renderer.Context));
     
     //NOTE(chen): set all states
     {   
-        ID3D11DeviceContext *DeviceContext = Renderer.DeviceContext;
-        
         ID3D11Buffer *ConstantBuffers[] = {
             Renderer.SettingsBuffer,
             Renderer.CameraBuffer,
@@ -307,7 +340,7 @@ InitDXRenderer(HWND Window, camera *Camera)
     }
     
     ImGui::CreateContext();
-    ImGui_ImplDX11_Init(Renderer.Device, Renderer.DeviceContext);
+    ImGui_ImplDX11_Init(Device, DeviceContext);
     ImGui::GetIO().RenderDrawListsFn = ImGui_ImplDX11_RenderDrawData;
     
     Renderer.BufferIndex = 0;
@@ -382,12 +415,14 @@ CreateStructuredBuffer(ID3D11Device1 *Device, void *Data,
 internal void
 UploadModelToRenderer(dx_renderer *Renderer, loaded_model Model)
 {
-    if (Renderer->TriangleBuffer || Renderer->BVHBuffer)
+    if (Renderer->TriangleBuffer || Renderer->BVHBuffer ||
+        Renderer->VertexBuffer)
     {
         Renderer->TriangleBufferView->Release();
         Renderer->TriangleBuffer->Release();
         Renderer->BVHBufferView->Release();
         Renderer->BVHBuffer->Release();
+        Renderer->VertexBuffer->Release();
         
         Refresh(Renderer);
     }
@@ -436,6 +471,16 @@ UploadModelToRenderer(dx_renderer *Renderer, loaded_model Model)
         Renderer->BVHBufferView,
     };
     DeviceContext->PSSetShaderResources(0, ARRAY_COUNT(ResourceViews), ResourceViews);
+    
+    D3D11_BUFFER_DESC VertexBufferDesc = {};
+    VertexBufferDesc.ByteWidth = sizeof(vertex) * Model.Vertices.Count;
+    VertexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    VertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    D3D11_SUBRESOURCE_DATA VertexBufferData = {};
+    VertexBufferData.pSysMem = Model.Vertices.Data;
+    HRESULT CreatedVertexBuffer = Device->CreateBuffer(&VertexBufferDesc, &VertexBufferData, &Renderer->VertexBuffer);
+    ASSERT(SUCCEEDED(CreatedVertexBuffer));
+    Renderer->VertexCount = Model.Vertices.Count;
 }
 
 internal void
@@ -507,8 +552,33 @@ Render(dx_renderer *Renderer, camera *Camera, f32 T)
         Renderer->OldSettings = Renderer->Settings;
     }
     
+    if (Renderer->Settings.RasterizeFirstBounce)
+    {
+        UINT VBStride = sizeof(vertex);
+        UINT VBOffset = 0;
+        DeviceContext->IASetVertexBuffers(0, 1, &Renderer->VertexBuffer, &VBStride, &VBOffset);
+        DeviceContext->IASetInputLayout(Renderer->GPassInputLayout);
+        DeviceContext->VSSetShader(Renderer->GPassVS, 0, 0);
+        DeviceContext->PSSetShader(Renderer->GPassPS, 0, 0);
+        
+        DeviceContext->ClearDepthStencilView(Renderer->DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+        
+        ID3D11RenderTargetView *RenderTargets[] = {
+            Renderer->PositionBuffer.RTV,
+            Renderer->NormalBuffer.RTV,
+            Renderer->AlbedoBuffer.RTV,
+            Renderer->EmissionBuffer.RTV,
+        };
+        DeviceContext->OMSetDepthStencilState(Renderer->DepthStencilState, 1);
+        DeviceContext->OMSetRenderTargets(ARRAY_COUNT(RenderTargets), RenderTargets, Renderer->DepthStencilView);
+        ASSERT(Renderer->VertexCount != 0);
+        DeviceContext->Draw(Renderer->VertexCount, 0);
+    }
+    
     int BufferIndex = Renderer->BufferIndex;
     int LastBufferIndex = Renderer->LastBufferIndex;
+    
+    //TODO(chen): disable depth testing
     
     DeviceContext->IASetInputLayout(0);
     DeviceContext->OMSetRenderTargets(1, &Renderer->SamplerBuffers[BufferIndex].RTV, 0);

@@ -16,8 +16,6 @@
 
 . switch to dx11 for the renderer
 -   Bring back rasterization of first bounce
--      create vertex buffer for uploaded model
--      enable depth testing
 -      render scene to g-buffer
 -      feed g-buffer to integrator as first bounce
 -   Allow window resize, fullscreen again

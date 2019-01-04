@@ -221,6 +221,8 @@ SetPersistentStates(dx_renderer *Renderer, int Width, int Height)
     DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     DeviceContext->VSSetShader(Renderer->FullscreenVS, 0, 0);
     
+    DeviceContext->PSSetSamplers(0, 1, &Renderer->NearestSampler);
+    
     D3D11_VIEWPORT Viewport = {};
     Viewport.Width = (f32)Width;
     Viewport.Height = (f32)Height;
@@ -229,7 +231,6 @@ SetPersistentStates(dx_renderer *Renderer, int Width, int Height)
     DeviceContext->RSSetViewports(1, &Viewport);
     DeviceContext->RSSetState(Renderer->RasterizerState);
 }
-
 
 internal dx_renderer
 InitDXRenderer(HWND Window, camera *Camera, int Width, int Height)
@@ -272,7 +273,7 @@ InitDXRenderer(HWND Window, camera *Camera, int Width, int Height)
     ASSERT(SUCCEEDED(TurnedOn));
     TurnedOn = Renderer.InfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
     ASSERT(SUCCEEDED(TurnedOn));
-    //TurnedOn = Renderer.InfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_WARNING, true);
+    TurnedOn = Renderer.InfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_WARNING, true);
     ASSERT(SUCCEEDED(TurnedOn));
     TurnedOn = Renderer.InfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_INFO, true);
     ASSERT(SUCCEEDED(TurnedOn));
@@ -361,6 +362,19 @@ InitDXRenderer(HWND Window, camera *Camera, int Width, int Height)
     Renderer.FullscreenVS = CreateDXVS(Device, "fullscreen.hlsl", fullscreen, "main", CompilerFlags);
     Renderer.SamplePS = CreateDXPS(Device, "sample.hlsl", sample, "main", CompilerFlags);
     Renderer.OutputPS = CreateDXPS(Device, "output.hlsl", output, "main", CompilerFlags);
+    
+    D3D11_SAMPLER_DESC NearestSamplerDesc = {};
+    NearestSamplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    NearestSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    NearestSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    NearestSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    NearestSamplerDesc.MipLODBias = 0;
+    NearestSamplerDesc.MaxAnisotropy = 1;
+    NearestSamplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+    NearestSamplerDesc.MinLOD = 0.0f;
+    NearestSamplerDesc.MaxLOD = 0.0f;
+    HRESULT CreatedNearestSampler = Device->CreateSamplerState(&NearestSamplerDesc, &Renderer.NearestSampler);
+    ASSERT(SUCCEEDED(CreatedNearestSampler));
     
     D3D11_RASTERIZER_DESC1 RasterizerStateDesc = {};
     RasterizerStateDesc.FillMode = D3D11_FILL_SOLID;
@@ -654,6 +668,10 @@ Render(dx_renderer *Renderer, camera *Camera, f32 T)
         DeviceContext->ClearRenderTargetView(Renderer->EmissionBuffer.RTV, ClearRGBA);
         DeviceContext->ClearDepthStencilView(Renderer->DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
         
+        //NOTE(chen): unbind gbuffer's SRV so they can be used as output
+        ID3D11ShaderResourceView *NullSRVs[] = {0, 0, 0, 0};
+        DeviceContext->PSSetShaderResources(3, ARRAY_COUNT(NullSRVs), NullSRVs);
+        
         ID3D11RenderTargetView *RenderTargetViews[] = {
             Renderer->PositionBuffer.RTV,
             Renderer->NormalBuffer.RTV,
@@ -682,13 +700,13 @@ Render(dx_renderer *Renderer, camera *Camera, f32 T)
     
     DeviceContext->IASetInputLayout(0);
     DeviceContext->VSSetShader(Renderer->FullscreenVS, 0, 0);
-#if 1
+    
     ID3D11ShaderResourceView *ResourceViews[] = {
         Renderer->TriangleBufferView,
         Renderer->BVHBufferView,
     };
     DeviceContext->PSSetShaderResources(0, ARRAY_COUNT(ResourceViews), ResourceViews);
-#endif
+    
     DeviceContext->PSSetShaderResources(2, 1, &Renderer->SamplerBuffers[LastBufferIndex].SRV);
     DeviceContext->PSSetShader(Renderer->SamplePS, 0, 0);
     DeviceContext->OMSetRenderTargets(1, &Renderer->SamplerBuffers[BufferIndex].RTV, 0);

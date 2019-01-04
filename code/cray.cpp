@@ -19,7 +19,6 @@ GIVEUP:
   -    likely GPU driver issue with SwapChain::ResizeBuffers()
   
 . switch to dx11 for the renderer
--   Breakpoint on all msgs, Ensure zero-warnings
 -   find a better way to combat rasterized first bounce aliasing
  . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
 -   Implement stretchy buffer

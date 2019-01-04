@@ -238,6 +238,14 @@ InitDXRenderer(HWND Window, camera *Camera)
         DepthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
         DepthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS;
         DepthStencilDesc.StencilEnable = false;
+        DepthStencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+        DepthStencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
+        DepthStencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+        DepthStencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+        DepthStencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+        DepthStencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
+        DepthStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+        DepthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
         
         HRESULT CreatedDepthStencilState = Device->CreateDepthStencilState(&DepthStencilDesc, &Renderer.DepthStencilState);
         ASSERT(SUCCEEDED(CreatedDepthStencilState));
@@ -302,7 +310,7 @@ InitDXRenderer(HWND Window, camera *Camera)
     
     Renderer.Settings.Exposure = 0.5f;
     Renderer.Settings.FOV = DegreeToRadian(45.0f);
-    Renderer.Settings.RasterizeFirstBounce = false;
+    Renderer.Settings.RasterizeFirstBounce = true;
     Renderer.Settings.EnableGroundPlane = true;
     Renderer.Settings.MaxBounceCount = 2;
     Renderer.Settings.L = {0.5f, 0.4f, -0.5f};
@@ -324,6 +332,8 @@ InitDXRenderer(HWND Window, camera *Camera)
             Renderer.CameraBuffer,
             Renderer.ContextBuffer,
         };
+        DeviceContext->VSSetConstantBuffers(0, ARRAY_COUNT(ConstantBuffers), 
+                                            ConstantBuffers);
         DeviceContext->PSSetConstantBuffers(0, ARRAY_COUNT(ConstantBuffers), 
                                             ConstantBuffers);
         DeviceContext->IASetInputLayout(0);
@@ -541,7 +551,10 @@ Render(dx_renderer *Renderer, camera *Camera, f32 T)
 {
     ID3D11DeviceContext1 *DeviceContext = Renderer->DeviceContext;
     
-    Renderer->Context.Time = T;
+    context_data *Context = &Renderer->Context;
+    Context->Time = T;
+    Context->View = Transpose(Mat4LookAt(Camera->P, Camera->LookAt));
+    Context->Projection = Transpose(Mat4PerspectiveDX(Renderer->Settings.FOV, Context->AspectRatio, 0.1f, 1000.0f));
     
     UpdateBuffer(DeviceContext, Renderer->ContextBuffer, 
                  &Renderer->Context, sizeof(Renderer->Context));
@@ -561,34 +574,50 @@ Render(dx_renderer *Renderer, camera *Camera, f32 T)
         DeviceContext->VSSetShader(Renderer->GPassVS, 0, 0);
         DeviceContext->PSSetShader(Renderer->GPassPS, 0, 0);
         
+        f32 ClearRGBA[4] = {0.0f};
+        DeviceContext->ClearRenderTargetView(Renderer->PositionBuffer.RTV, ClearRGBA);
+        DeviceContext->ClearRenderTargetView(Renderer->NormalBuffer.RTV, ClearRGBA);
+        DeviceContext->ClearRenderTargetView(Renderer->AlbedoBuffer.RTV, ClearRGBA);
+        DeviceContext->ClearRenderTargetView(Renderer->EmissionBuffer.RTV, ClearRGBA);
         DeviceContext->ClearDepthStencilView(Renderer->DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
         
-        ID3D11RenderTargetView *RenderTargets[] = {
+        ID3D11RenderTargetView *RenderTargetViews[] = {
             Renderer->PositionBuffer.RTV,
             Renderer->NormalBuffer.RTV,
             Renderer->AlbedoBuffer.RTV,
             Renderer->EmissionBuffer.RTV,
         };
-        DeviceContext->OMSetDepthStencilState(Renderer->DepthStencilState, 1);
-        DeviceContext->OMSetRenderTargets(ARRAY_COUNT(RenderTargets), RenderTargets, Renderer->DepthStencilView);
+        DeviceContext->OMSetDepthStencilState(Renderer->DepthStencilState, 0);
+        DeviceContext->OMSetRenderTargets(ARRAY_COUNT(RenderTargetViews), RenderTargetViews, Renderer->DepthStencilView);
         ASSERT(Renderer->VertexCount != 0);
         DeviceContext->Draw(Renderer->VertexCount, 0);
+        
+        //NOTE(chen): unbind gbuffer's RTV so they can be used as shader resources
+        DeviceContext->OMSetRenderTargets(0, 0, 0);
+        
+        ID3D11ShaderResourceView *GBufferViews[] = {
+            Renderer->PositionBuffer.SRV,
+            Renderer->NormalBuffer.SRV,
+            Renderer->AlbedoBuffer.SRV,
+            Renderer->EmissionBuffer.SRV,
+        };
+        DeviceContext->PSSetShaderResources(3, ARRAY_COUNT(GBufferViews), GBufferViews);
     }
     
     int BufferIndex = Renderer->BufferIndex;
     int LastBufferIndex = Renderer->LastBufferIndex;
     
-    //TODO(chen): disable depth testing
+    DeviceContext->VSSetShader(Renderer->FullscreenVS, 0, 0);
     
     DeviceContext->IASetInputLayout(0);
-    DeviceContext->OMSetRenderTargets(1, &Renderer->SamplerBuffers[BufferIndex].RTV, 0);
-    DeviceContext->PSSetShaderResources(2, 1, &Renderer->SamplerBuffers[LastBufferIndex].SRV);
     DeviceContext->PSSetShader(Renderer->SamplePS, 0, 0);
+    DeviceContext->PSSetShaderResources(2, 1, &Renderer->SamplerBuffers[LastBufferIndex].SRV);
+    DeviceContext->OMSetRenderTargets(1, &Renderer->SamplerBuffers[BufferIndex].RTV, 0);
     DeviceContext->Draw(3, 0);
     
+    DeviceContext->PSSetShader(Renderer->OutputPS, 0, 0);
     DeviceContext->OMSetRenderTargets(1, &Renderer->BackBufferView, 0);
     DeviceContext->PSSetShaderResources(2, 1, &Renderer->SamplerBuffers[BufferIndex].SRV);
-    DeviceContext->PSSetShader(Renderer->OutputPS, 0, 0);
     DeviceContext->Draw(3, 0);
     
     Renderer->Context.SampleCountSoFar += 1;

@@ -24,15 +24,13 @@ SamplerState NearestSampler
 struct pixel
 {
     float4 Position: SV_Position;
-    float2 P: PIXEL_p;
+    float2 P: PIXEL_P;
+    float2 TexCoord: TEXCOORD;
 };
 
 float4 main(pixel Pixel): SV_TARGET
 {
-    float2 TexCoord = 0.5 * Pixel.P + 0.5;
-    TexCoord.y = 1.0 - TexCoord.y;
-    
-    float3 Col = HDRInputTex.Sample(NearestSampler, TexCoord).rgb;
+    float3 Col = HDRInputTex.Sample(NearestSampler, Pixel.TexCoord).rgb;
     
     Col = 1.0 - exp(-Exposure * Col);
     Col = sqrt(Col);

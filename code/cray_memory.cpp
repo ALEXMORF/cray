@@ -51,6 +51,10 @@ PushBytes(memory_arena *Arena, size_t ByteCount)
     
     u8 *MemPoint = Arena->Base + Arena->Used;
     Arena->Used += ByteCount;
+    if (Arena->Used > Arena->PeekUsed)
+    {
+        Arena->PeekUsed = Arena->Used;
+    }
     
     return MemPoint;
 }

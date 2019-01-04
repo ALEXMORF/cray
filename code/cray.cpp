@@ -15,12 +15,10 @@
 /*TODO(chen):
 
 . switch to dx11 for the renderer
--   Bring back rasterization of first bounce
--      render scene to g-buffer
--      feed g-buffer to integrator as first bounce
 -   Allow window resize, fullscreen again
  . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
 -   Implement stretchy buffer
+-   profile memory usage
 -   replace vertices and triangles structs as they are unnecessary
 -   use stretchy buffer for all allocations done in LoadModel()
 . HDR Environment map

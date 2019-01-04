@@ -8,7 +8,8 @@ global_variable char *fullscreen = R"(struct vertex_in
 struct vertex_out
 {
     float4 Position: SV_Position;
-    float2 PixelP: PIXEL_P;
+    float2 P: PIXEL_P;
+    float2 TexCoord: TEXCOORD;
 };
 
 vertex_out main(vertex_in In)
@@ -28,7 +29,10 @@ vertex_out main(vertex_in In)
         Out.Position = float4(-1.0f, 3.0f, 0.0f, 1.0f);
     }
     
-    Out.PixelP = float2(Out.Position.x, Out.Position.y);
+    Out.P = Out.Position.xy;
+    float2 TexCoord = 0.5 * Out.Position.xy + 0.5;
+    TexCoord.y = 1.0 - TexCoord.y;
+    Out.TexCoord = TexCoord;
     
     return Out;
 })";
@@ -120,15 +124,13 @@ SamplerState NearestSampler
 struct pixel
 {
     float4 Position: SV_Position;
-    float2 P: PIXEL_p;
+    float2 P: PIXEL_P;
+    float2 TexCoord: TEXCOORD;
 };
 
 float4 main(pixel Pixel): SV_TARGET
 {
-    float2 TexCoord = 0.5 * Pixel.P + 0.5;
-    TexCoord.y = 1.0 - TexCoord.y;
-    
-    float3 Col = HDRInputTex.Sample(NearestSampler, TexCoord).rgb;
+    float3 Col = HDRInputTex.Sample(NearestSampler, Pixel.TexCoord).rgb;
     
     Col = 1.0 - exp(-Exposure * Col);
     Col = sqrt(Col);
@@ -201,6 +203,11 @@ StructuredBuffer<_triangle> Triangles: register(t0);
 StructuredBuffer<bvh_entry> BVH: register(t1);
 Texture2D PrevSamplesTex: register(t2);
 
+Texture2D PositionTex: register(t3);
+Texture2D NormalTex: register(t4);
+Texture2D AlbedoTex: register(t5);
+Texture2D EmissionTex: register(t6);
+
 SamplerState NearestSampler
 {
     Filter = MIN_MAG_NEAREST;
@@ -212,6 +219,7 @@ struct pixel
 {
     float4 Position: SV_Position;
     float2 P: PIXEL_p;
+    float2 TexCoord: TEXCOORD;
 };
 
 #define T_MIN 0.0001
@@ -242,18 +250,17 @@ struct contact_info
     float3 Emission;
 };
 
-#if 0
-contact_info ReadGBuffer()
+contact_info ReadGBuffer(float2 TexCoord)
 {
     contact_info Res;
     
-    Res.Emission = texture(EmissionTex, FragP.xy).rgb;
-    Res.Albedo = texture(AlbedoTex, FragP.xy).rgb;
-    Res.N = texture(NormalTex, FragP.xy).xyz;
-    float3 HitP = texture(PositionTex, FragP.xy).xyz;
+    Res.Emission = EmissionTex.Sample(NearestSampler, TexCoord).rgb;
+    Res.Albedo = AlbedoTex.Sample(NearestSampler, TexCoord).rgb;
+    Res.N = NormalTex.Sample(NearestSampler, TexCoord).xyz;
+    float3 HitP = PositionTex.Sample(NearestSampler, TexCoord).xyz;
     HitP += (0.001 + T_MIN) * Res.N;
     
-    if (Res.N != float3(0))
+    if (Res.N.x != 0.0 || Res.N.y != 0.0 || Res.N.z != 0)
     {
         Res.T = length(HitP - CamP);
     }
@@ -265,7 +272,6 @@ contact_info ReadGBuffer()
     
     return Res;
 }
-#endif
 
 float RayIntersectSphere(in float3 Ro, in float3 Rd, float Radius)
 {
@@ -607,13 +613,15 @@ float4 main(pixel Pixel): SV_TARGET
     float3 CurrRo = Ro;
     float3 CurrRd = Rd;
     
+    contact_info RasterizedFirstHit = ReadGBuffer(Pixel.TexCoord);
+    
     for (int BounceIndex = 0; BounceIndex < MaxBounceCount; ++BounceIndex)
     {
         contact_info Hit = Raytrace(CurrRo, CurrRd);;
-#if 0
+#if 1
         if (BounceIndex == 0 && RasterizeFirstBounce)
         {
-            Hit = ReadGBuffer();
+            Hit = RasterizedFirstHit;
             if (EnableGroundPlane)
             {
                 contact_info GroundHit = RaytraceGroundPlane(CurrRo, CurrRd);
@@ -644,13 +652,9 @@ float4 main(pixel Pixel): SV_TARGET
             break;
         }
     }
-    
-    float2 TexCoord = 0.5 * Pixel.P + 0.5;
-    TexCoord.y = 1.0 - TexCoord.y;
-    
     int SampleCount = SampleCountSoFar + 1;
     float CurrSampleWeight = 1.0 / float(SampleCount);
-    float3 PrevSamplesAvg = PrevSamplesTex.Sample(NearestSampler, TexCoord).rgb;
+    float3 PrevSamplesAvg = PrevSamplesTex.Sample(NearestSampler, Pixel.TexCoord).rgb;
     float3 SamplesAvg = ((1.0 - CurrSampleWeight) * PrevSamplesAvg + 
                          CurrSampleWeight * Radiance);
     

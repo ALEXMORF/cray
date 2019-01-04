@@ -32,6 +32,36 @@ UINewFrame(input *Input, int Width, int Height, f32 dT)
     Input->MouseIsCaptured = IO.WantCaptureMouse;
 }
 
+struct value_with_unit
+{
+    f32 Count;
+    char *Unit;
+};
+
+internal value_with_unit
+CalcProperMemoryUnit(u64 Count)
+{
+    char *Units[] = {"B", "KB", "MB", "GB", "TB"};
+    
+    value_with_unit Value = {};
+    
+    Value.Count = (f32)Count;
+    Value.Unit = Units[0];
+    
+    for (int UnitIndex = 1; UnitIndex < ARRAY_COUNT(Units); ++UnitIndex)
+    {
+        if (Value.Count / 1024.0f < 1.0f)
+        {
+            break;
+        }
+        
+        Value.Count /= 1024.0f;
+        Value.Unit = Units[UnitIndex];
+    }
+    
+    return Value;
+}
+
 internal void
 DoUI(cray *CRay, int Width, int Height, f32 dT)
 {
@@ -53,6 +83,12 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
         f32 RaysPerSecond = (RayPerPixel * PixelCount) / dT;
         
         ImGui::Text("Rate of RT: %.3f Mrays/second", RaysPerSecond / 1000000.0f);
+    }
+    {
+        value_with_unit PeekMemUsage = CalcProperMemoryUnit(GlobalTempArena.PeekUsed);
+        value_with_unit MainArenaMemUsage = CalcProperMemoryUnit(CRay->MainArena.Used);
+        ImGui::Text("Peek TempMemory Usage: %.2f%s", PeekMemUsage.Count, PeekMemUsage.Unit);
+        ImGui::Text("Main Arena Usage: %.2f%s", MainArenaMemUsage.Count, MainArenaMemUsage.Unit);
     }
     
     ImGui::Separator();

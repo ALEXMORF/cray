@@ -1171,7 +1171,7 @@ Mat4Ortho(float Left, float Right, float Bottom, float Top, float Near, float Fa
 }
 
 inline mat4
-Mat4Perspective(f32 FOV, f32 AspectRatio, f32 ZNear, f32 ZFar)
+Mat4PerspectiveGL(f32 FOV, f32 AspectRatio, f32 ZNear, f32 ZFar)
 {
     mat4 Result = {};
     
@@ -1182,6 +1182,22 @@ Mat4Perspective(f32 FOV, f32 AspectRatio, f32 ZNear, f32 ZFar)
     Result.Data[2][3] = 1.0f;
     Result.Data[2][2] = (ZFar + ZNear) / (ZFar - ZNear);
     Result.Data[3][2] = -(2.0f *ZFar*ZNear) / (ZFar - ZNear);
+    
+    return Result;
+}
+
+inline mat4
+Mat4PerspectiveDX(f32 FOV, f32 AspectRatio, f32 ZNear, f32 ZFar)
+{
+    mat4 Result = {};
+    
+    f32 HFOV = FOV / 2.0f;
+    
+    Result.Data[0][0] = 1.0f / (tanf(HFOV) * AspectRatio);
+    Result.Data[1][1] = 1.0f / tanf(HFOV);
+    Result.Data[2][2] = ZFar / (ZFar - ZNear);
+    Result.Data[2][3] = 1.0f;
+    Result.Data[3][2] = -(ZFar * ZNear) / (ZFar - ZNear);
     
     return Result;
 }

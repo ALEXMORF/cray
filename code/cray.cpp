@@ -14,8 +14,13 @@
 
 /*TODO(chen):
 
+GIVEUP:
+  . Allow window to resize or fullscreen
+  -    likely GPU driver issue with SwapChain::ResizeBuffers()
+  
 . switch to dx11 for the renderer
--   Allow window resize, fullscreen again
+-   Breakpoint on all msgs, Ensure zero-warnings
+-   find a better way to combat rasterized first bounce aliasing
  . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
 -   Implement stretchy buffer
 -   profile memory usage
@@ -80,8 +85,8 @@ RunCRay(app_memory *Memory, input *Input, f32 dT,
         GlobalTempArena = PushMemoryArena(&CRay->MainArena, GB(1));
         
         CRay->Camera = InitCamera();
-        CRay->Renderer = InitDXRenderer(Window, &CRay->Camera);
-        CRay->Model = LoadModel(GlobalPrefabs[11], &GlobalTempArena);
+        CRay->Renderer = InitDXRenderer(Window, &CRay->Camera, Width, Height);
+        CRay->Model = LoadModel(GlobalPrefabs[0], &GlobalTempArena);
         UploadModelToRenderer(&CRay->Renderer, CRay->Model);
         
         CRay->ShowUI = true;
@@ -115,7 +120,7 @@ RunCRay(app_memory *Memory, input *Input, f32 dT,
         RefreshCamera(&CRay->Renderer, &CRay->Camera);
     }
     
-    //ResizeResources(&CRay->Renderer, Width, Height);
+    ResizeResources(&CRay->Renderer, Width, Height);
     Render(&CRay->Renderer, &CRay->Camera, CRay->T);
     ImGui::Render();
     Present(&CRay->Renderer);

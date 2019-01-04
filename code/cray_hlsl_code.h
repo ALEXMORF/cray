@@ -140,7 +140,7 @@ float4 main(pixel Pixel): SV_TARGET
 
 global_variable char *sample = R"(#define DEBUG_SHADER 0
 #define TIMEOUT_SHADER 0
-#define TIMEOUT_LIMIT 20
+#define TIMEOUT_LIMIT 10
 
 struct _triangle
 {

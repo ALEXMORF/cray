@@ -128,15 +128,115 @@ CreateDXRenderTarget(ID3D11Device1 *Device, int Width, int Height,
 }
 
 internal void
+Release(dx_render_target *RenderTarget)
+{
+    RenderTarget->Tex->Release();
+    RenderTarget->RTV->Release();
+    RenderTarget->SRV->Release();
+    
+    *RenderTarget = {};
+}
+
+internal void
 Refresh(dx_renderer *Renderer)
 {
     Renderer->Context.SampleCountSoFar = 0;
 }
 
+internal void
+CreateWindowSizeCoupledResources(dx_renderer *Renderer)
+{
+    ID3D11Device1 *Device = Renderer->Device;
+    
+    HRESULT GotBackBuffer = Renderer->SwapChain->GetBuffer(0, IID_PPV_ARGS(&Renderer->BackBuffer));
+    ASSERT(SUCCEEDED(GotBackBuffer));
+    HRESULT CreatedBackBufferRTV = Device->CreateRenderTargetView(Renderer->BackBuffer,
+                                                                  0, &Renderer->BackBufferView);
+    ASSERT(SUCCEEDED(CreatedBackBufferRTV));
+    
+    D3D11_TEXTURE2D_DESC BackBufferDesc = {};
+    Renderer->BackBuffer->GetDesc(&BackBufferDesc);
+    int ClientWidth = BackBufferDesc.Width;
+    int ClientHeight = BackBufferDesc.Height;
+    
+    for (int BufferIndex = 0; BufferIndex < 2; ++BufferIndex)
+    {
+        Renderer->SamplerBuffers[BufferIndex] = CreateDXRenderTarget(
+            Device, ClientWidth, ClientHeight, 
+            DXGI_FORMAT_R16G16B16A16_FLOAT);
+    }
+    Renderer->PositionBuffer = CreateDXRenderTarget(Device, 
+                                                    ClientWidth, ClientHeight,
+                                                    DXGI_FORMAT_R16G16B16A16_FLOAT);
+    Renderer->NormalBuffer = CreateDXRenderTarget(Device, 
+                                                  ClientWidth, ClientHeight,
+                                                  DXGI_FORMAT_R16G16B16A16_FLOAT);
+    //TODO(chen): compress these when we have a material system in place
+    Renderer->AlbedoBuffer = CreateDXRenderTarget(Device, 
+                                                  ClientWidth, ClientHeight,
+                                                  DXGI_FORMAT_B8G8R8A8_UNORM);
+    Renderer->EmissionBuffer = CreateDXRenderTarget(Device, 
+                                                    ClientWidth, ClientHeight,
+                                                    DXGI_FORMAT_R16G16B16A16_FLOAT);
+    
+    // depth stencil buffer
+    {
+        D3D11_TEXTURE2D_DESC DepthStencilBufferDesc = {};
+        DepthStencilBufferDesc.Width = ClientWidth;
+        DepthStencilBufferDesc.Height = ClientHeight;
+        DepthStencilBufferDesc.MipLevels = 1;
+        DepthStencilBufferDesc.ArraySize = 1;
+        DepthStencilBufferDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+        DepthStencilBufferDesc.SampleDesc.Count = 1;
+        DepthStencilBufferDesc.SampleDesc.Quality = 0;
+        DepthStencilBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+        DepthStencilBufferDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+        
+        HRESULT CreatedDepthStencil = Device->CreateTexture2D(&DepthStencilBufferDesc, 0, &Renderer->DepthStencilBuffer);
+        ASSERT(SUCCEEDED(CreatedDepthStencil));
+        
+        D3D11_DEPTH_STENCIL_VIEW_DESC DepthStencilViewDesc = {};
+        DepthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+        DepthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+        HRESULT CreatedDepthStencilView = Device->CreateDepthStencilView(Renderer->DepthStencilBuffer, &DepthStencilViewDesc, &Renderer->DepthStencilView);
+        ASSERT(SUCCEEDED(CreatedDepthStencilView));
+    }
+}
+
+internal void
+SetPersistentStates(dx_renderer *Renderer, int Width, int Height)
+{   
+    ID3D11DeviceContext1 *DeviceContext = Renderer->DeviceContext;
+    
+    ID3D11Buffer *ConstantBuffers[] = {
+        Renderer->SettingsBuffer,
+        Renderer->CameraBuffer,
+        Renderer->ContextBuffer,
+    };
+    DeviceContext->VSSetConstantBuffers(0, ARRAY_COUNT(ConstantBuffers), 
+                                        ConstantBuffers);
+    DeviceContext->PSSetConstantBuffers(0, ARRAY_COUNT(ConstantBuffers), 
+                                        ConstantBuffers);
+    DeviceContext->IASetInputLayout(0);
+    DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    DeviceContext->VSSetShader(Renderer->FullscreenVS, 0, 0);
+    
+    D3D11_VIEWPORT Viewport = {};
+    Viewport.Width = (f32)Width;
+    Viewport.Height = (f32)Height;
+    Viewport.MinDepth = 0.0f;
+    Viewport.MaxDepth = 1.0f;
+    DeviceContext->RSSetViewports(1, &Viewport);
+    DeviceContext->RSSetState(Renderer->RasterizerState);
+}
+
+
 internal dx_renderer
-InitDXRenderer(HWND Window, camera *Camera)
+InitDXRenderer(HWND Window, camera *Camera, int Width, int Height)
 {
     dx_renderer Renderer = {};
+    Renderer.Width = Width;
+    Renderer.Height = Height;
     
     ID3D11Device *TempDevice = 0;
     ID3D11DeviceContext *TempDeviceContext = 0;
@@ -160,6 +260,25 @@ InitDXRenderer(HWND Window, camera *Camera)
     
     TempDevice->QueryInterface(IID_PPV_ARGS(&Renderer.Device));
     TempDeviceContext->QueryInterface(IID_PPV_ARGS(&Renderer.DeviceContext));
+    
+#if CRAY_DEBUG
+    HRESULT GotDebug = Renderer.Device->QueryInterface(IID_PPV_ARGS(&Renderer.Debug));
+    ASSERT(SUCCEEDED(GotDebug));
+    HRESULT GotInfoQueue = Renderer.Debug->QueryInterface(IID_PPV_ARGS(&Renderer.InfoQueue));
+    ASSERT(SUCCEEDED(GotInfoQueue));
+    
+    HRESULT TurnedOn = S_OK;
+    TurnedOn = Renderer.InfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
+    ASSERT(SUCCEEDED(TurnedOn));
+    TurnedOn = Renderer.InfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
+    ASSERT(SUCCEEDED(TurnedOn));
+    //TurnedOn = Renderer.InfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_WARNING, true);
+    ASSERT(SUCCEEDED(TurnedOn));
+    TurnedOn = Renderer.InfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_INFO, true);
+    ASSERT(SUCCEEDED(TurnedOn));
+    TurnedOn = Renderer.InfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_MESSAGE, true);
+    ASSERT(SUCCEEDED(TurnedOn));
+#endif
     
     ID3D11Device1 *Device = Renderer.Device;
     ID3D11DeviceContext1 *DeviceContext = Renderer.DeviceContext;
@@ -189,73 +308,15 @@ InitDXRenderer(HWND Window, camera *Camera)
                                                                0, 0, &Renderer.SwapChain);
     ASSERT(SUCCEEDED(CreatedSwapChain));
     
-    Renderer.SwapChain->GetBuffer(0, IID_PPV_ARGS(&Renderer.BackBuffer));
-    Device->CreateRenderTargetView(Renderer.BackBuffer,
-                                   0, &Renderer.BackBufferView);
-    D3D11_TEXTURE2D_DESC BackBufferDesc = {};
-    Renderer.BackBuffer->GetDesc(&BackBufferDesc);
-    int ClientWidth = BackBufferDesc.Width;
-    int ClientHeight = BackBufferDesc.Height;
+    CreateWindowSizeCoupledResources(&Renderer);
     
-    for (int BufferIndex = 0; BufferIndex < 2; ++BufferIndex)
-    {
-        Renderer.SamplerBuffers[BufferIndex] = CreateDXRenderTarget(
-            Device, ClientWidth, ClientHeight, 
-            DXGI_FORMAT_R16G16B16A16_FLOAT);
-    }
-    Renderer.PositionBuffer = CreateDXRenderTarget(Device, 
-                                                   ClientWidth, ClientHeight,
-                                                   DXGI_FORMAT_R16G16B16A16_FLOAT);
-    Renderer.NormalBuffer = CreateDXRenderTarget(Device, 
-                                                 ClientWidth, ClientHeight,
-                                                 DXGI_FORMAT_R16G16B16A16_FLOAT);
-    //TODO(chen): compress these when we have a material system in place
-    Renderer.AlbedoBuffer = CreateDXRenderTarget(Device, 
-                                                 ClientWidth, ClientHeight,
-                                                 DXGI_FORMAT_B8G8R8A8_UNORM);
-    Renderer.EmissionBuffer = CreateDXRenderTarget(Device, 
-                                                   ClientWidth, ClientHeight,
-                                                   DXGI_FORMAT_R16G16B16A16_FLOAT);
-    
-    // depth stencil buffer
-    {
-        D3D11_TEXTURE2D_DESC DepthStencilBufferDesc = {};
-        DepthStencilBufferDesc.Width = ClientWidth;
-        DepthStencilBufferDesc.Height = ClientHeight;
-        DepthStencilBufferDesc.MipLevels = 1;
-        DepthStencilBufferDesc.ArraySize = 1;
-        DepthStencilBufferDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-        DepthStencilBufferDesc.SampleDesc.Count = 1;
-        DepthStencilBufferDesc.SampleDesc.Quality = 0;
-        DepthStencilBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-        DepthStencilBufferDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-        
-        HRESULT CreatedDepthStencil = Device->CreateTexture2D(&DepthStencilBufferDesc, 0, &Renderer.DepthStencilBuffer);
-        ASSERT(SUCCEEDED(CreatedDepthStencil));
-        
-        D3D11_DEPTH_STENCIL_DESC DepthStencilDesc = {};
-        DepthStencilDesc.DepthEnable = true;
-        DepthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-        DepthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS;
-        DepthStencilDesc.StencilEnable = false;
-        DepthStencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-        DepthStencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
-        DepthStencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-        DepthStencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-        DepthStencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-        DepthStencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
-        DepthStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-        DepthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-        
-        HRESULT CreatedDepthStencilState = Device->CreateDepthStencilState(&DepthStencilDesc, &Renderer.DepthStencilState);
-        ASSERT(SUCCEEDED(CreatedDepthStencilState));
-        
-        D3D11_DEPTH_STENCIL_VIEW_DESC DepthStencilViewDesc = {};
-        DepthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-        DepthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-        HRESULT CreatedDepthStencilView = Device->CreateDepthStencilView(Renderer.DepthStencilBuffer, &DepthStencilViewDesc, &Renderer.DepthStencilView);
-        ASSERT(SUCCEEDED(CreatedDepthStencilView));
-    }
+    D3D11_DEPTH_STENCIL_DESC DepthStencilDesc = {};
+    DepthStencilDesc.DepthEnable = true;
+    DepthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+    DepthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS;
+    DepthStencilDesc.StencilEnable = false;
+    HRESULT CreatedDepthStencilState = Device->CreateDepthStencilState(&DepthStencilDesc, &Renderer.DepthStencilState);
+    ASSERT(SUCCEEDED(CreatedDepthStencilState));
     
 #if CRAY_DEBUG
     UINT CompilerFlags = D3DCOMPILE_DEBUG;
@@ -308,6 +369,11 @@ InitDXRenderer(HWND Window, camera *Camera)
     HRESULT CreatedRasterizerState = Device->CreateRasterizerState1(&RasterizerStateDesc, &Renderer.RasterizerState);
     ASSERT(SUCCEEDED(CreatedRasterizerState));
     
+    D3D11_TEXTURE2D_DESC BackBufferDesc = {};
+    Renderer.BackBuffer->GetDesc(&BackBufferDesc);
+    int ClientWidth = BackBufferDesc.Width;
+    int ClientHeight = BackBufferDesc.Height;
+    
     Renderer.Settings.Exposure = 0.5f;
     Renderer.Settings.FOV = DegreeToRadian(45.0f);
     Renderer.Settings.RasterizeFirstBounce = true;
@@ -325,29 +391,7 @@ InitDXRenderer(HWND Window, camera *Camera)
     Renderer.CameraBuffer = CreateDynamicConstantBuffer(Device, &Renderer.Camera, sizeof(Renderer.Camera));
     Renderer.ContextBuffer = CreateDynamicConstantBuffer(Device, &Renderer.Context, sizeof(Renderer.Context));
     
-    //NOTE(chen): set all states
-    {   
-        ID3D11Buffer *ConstantBuffers[] = {
-            Renderer.SettingsBuffer,
-            Renderer.CameraBuffer,
-            Renderer.ContextBuffer,
-        };
-        DeviceContext->VSSetConstantBuffers(0, ARRAY_COUNT(ConstantBuffers), 
-                                            ConstantBuffers);
-        DeviceContext->PSSetConstantBuffers(0, ARRAY_COUNT(ConstantBuffers), 
-                                            ConstantBuffers);
-        DeviceContext->IASetInputLayout(0);
-        DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        DeviceContext->VSSetShader(Renderer.FullscreenVS, 0, 0);
-        
-        D3D11_VIEWPORT Viewport = {};
-        Viewport.Width = (f32)ClientWidth;
-        Viewport.Height = (f32)ClientHeight;
-        Viewport.MinDepth = 0.0f;
-        Viewport.MaxDepth = 1.0f;
-        DeviceContext->RSSetViewports(1, &Viewport);
-        DeviceContext->RSSetState(Renderer.RasterizerState);
-    }
+    SetPersistentStates(&Renderer, ClientWidth, ClientHeight);
     
     ImGui::CreateContext();
     ImGui_ImplDX11_Init(Device, DeviceContext);
@@ -476,12 +520,6 @@ UploadModelToRenderer(dx_renderer *Renderer, loaded_model Model)
     }
     RewindTempArenaToSavedOffset();
     
-    ID3D11ShaderResourceView *ResourceViews[] = {
-        Renderer->TriangleBufferView,
-        Renderer->BVHBufferView,
-    };
-    DeviceContext->PSSetShaderResources(0, ARRAY_COUNT(ResourceViews), ResourceViews);
-    
     D3D11_BUFFER_DESC VertexBufferDesc = {};
     VertexBufferDesc.ByteWidth = sizeof(vertex) * Model.Vertices.Count;
     VertexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
@@ -543,7 +581,42 @@ RefreshCamera(dx_renderer *Renderer, camera *Camera)
 internal void
 ResizeResources(dx_renderer *Renderer, int NewWidth, int NewHeight)
 {
-    Panic("No resize resource yet");
+    if (NewWidth != Renderer->Width || NewHeight != Renderer->Height)
+    {
+        Panic("Not handling window resize");
+        
+        Renderer->Width = NewWidth;
+        Renderer->Height = NewHeight;
+        
+        // release screen-size coupled resources
+        Renderer->BackBuffer->Release();
+        Renderer->BackBufferView->Release();
+        for (int I = 0; I < ARRAY_COUNT(Renderer->SamplerBuffers); ++I)
+        {
+            Release(&Renderer->SamplerBuffers[I]);
+        }
+        Release(&Renderer->PositionBuffer);
+        Release(&Renderer->NormalBuffer);
+        Release(&Renderer->AlbedoBuffer);
+        Release(&Renderer->EmissionBuffer);
+        Renderer->DepthStencilBuffer->Release();
+        Renderer->DepthStencilView->Release();
+        
+        HRESULT ResizedBackBuffers = Renderer->SwapChain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
+        if (FAILED(ResizedBackBuffers))
+        {
+            HRESULT DeviceRemovedReason = Renderer->Device->GetDeviceRemovedReason();
+            ASSERT(!"Failed to resize back buffers");
+        }
+        
+        Renderer->DeviceContext->ClearState();
+        
+        CreateWindowSizeCoupledResources(Renderer);
+        SetPersistentStates(Renderer, NewWidth, NewHeight);
+        
+        Renderer->Context.AspectRatio = (f32)NewWidth / (f32)NewHeight;
+        Refresh(Renderer);
+    }
 }
 
 internal void
@@ -607,11 +680,17 @@ Render(dx_renderer *Renderer, camera *Camera, f32 T)
     int BufferIndex = Renderer->BufferIndex;
     int LastBufferIndex = Renderer->LastBufferIndex;
     
-    DeviceContext->VSSetShader(Renderer->FullscreenVS, 0, 0);
-    
     DeviceContext->IASetInputLayout(0);
-    DeviceContext->PSSetShader(Renderer->SamplePS, 0, 0);
+    DeviceContext->VSSetShader(Renderer->FullscreenVS, 0, 0);
+#if 1
+    ID3D11ShaderResourceView *ResourceViews[] = {
+        Renderer->TriangleBufferView,
+        Renderer->BVHBufferView,
+    };
+    DeviceContext->PSSetShaderResources(0, ARRAY_COUNT(ResourceViews), ResourceViews);
+#endif
     DeviceContext->PSSetShaderResources(2, 1, &Renderer->SamplerBuffers[LastBufferIndex].SRV);
+    DeviceContext->PSSetShader(Renderer->SamplePS, 0, 0);
     DeviceContext->OMSetRenderTargets(1, &Renderer->SamplerBuffers[BufferIndex].RTV, 0);
     DeviceContext->Draw(3, 0);
     
@@ -629,5 +708,11 @@ internal void
 Present(dx_renderer *Renderer)
 {
     DXGI_PRESENT_PARAMETERS PresentParameters = {};
-    Renderer->SwapChain->Present1(0, 0, &PresentParameters);
+    HRESULT PresentedBackBuffer = Renderer->SwapChain->Present1(1, 0, &PresentParameters);
+    if (FAILED(PresentedBackBuffer))
+    {
+        HRESULT DeviceRemovedReason = Renderer->Device->GetDeviceRemovedReason();
+        ASSERT(!"Failed to present back buffer");
+    }
+    
 }

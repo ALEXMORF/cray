@@ -89,6 +89,12 @@ struct dx_renderer
     ID3D11Device1 *Device;
     ID3D11DeviceContext1 *DeviceContext;
     IDXGISwapChain1 *SwapChain;
+    
+#if CRAY_DEBUG
+    ID3D11Debug *Debug;
+    ID3D11InfoQueue *InfoQueue;
+#endif
+    
     ID3D11Texture2D *BackBuffer;
     ID3D11RenderTargetView *BackBufferView;
     
@@ -130,4 +136,6 @@ struct dx_renderer
     context_data Context;
     int LastBufferIndex;
     int BufferIndex;
+    int Width;
+    int Height;
 };

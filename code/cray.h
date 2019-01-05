@@ -2,6 +2,8 @@
 
 #include "cray_prefabs.h"
 
+#include "cray_malloc.h"
+#include "cray_buf.h"
 #include "cray_memory.h"
 #include "cray_obj.h"
 #include "cray_bvh.h"

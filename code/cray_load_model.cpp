@@ -63,12 +63,6 @@ ConvertVerticesToTriangles(vertices Vertices,
     return Result;
 }
 
-inline f32
-CalcSecondsPassed(clock_t BeginClock)
-{
-    return (f32)(clock() - BeginClock) / (f32)CLOCKS_PER_SEC;
-}
-
 internal loaded_model
 LoadModel(char *ObjPath, mat4 XForm, memory_arena *Arena)
 {

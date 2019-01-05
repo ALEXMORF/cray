@@ -15,11 +15,9 @@
 /*TODO(chen):
 
        . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
--   Implement stretchy buffer
--   profile memory usage
--   replace vertices and triangles structs as they are unnecessary
 -   use stretchy buffer for all allocations done in LoadModel()
-. HDR Environment map
+-   replace vertices and triangles structs as they are unnecessary
+-   profile peek mem usage
 . Optimize shadow rays: don't return nearest t, instead only a boolean result is needed.
 . Better BVH subdivision termination rule
 . faster BVH traversal (stackless)
@@ -62,6 +60,31 @@
 */
 
 internal void
+RunBufTest()
+{
+    int *Array = 0;
+    BufPush(Array, 0);
+    BufPush(Array, 1);
+    BufPush(Array, 2);
+    BufPush(Array, 3);
+    ASSERT(BufCount(Array) == 4);
+    BufFree(Array);
+    Array = 0;
+    
+    int PushCount = 100000;
+    for (int I = 0; I < PushCount; ++I)
+    {
+        BufPush(Array, I);
+    }
+    ASSERT(BufCount(Array) == PushCount);
+    for (int I = 0; I < PushCount; ++I)
+    {
+        ASSERT(Array[I] == I);
+    }
+    BufFree(Array);
+}
+
+internal void
 RunCRay(app_memory *Memory, input *Input, f32 dT, 
         HWND Window, int Width, int Height, panic *PlatformPanic)
 {
@@ -71,6 +94,8 @@ RunCRay(app_memory *Memory, input *Input, f32 dT,
     if (!Memory->IsInitialized)
     {
         __PanicStr = PlatformPanic;
+        
+        RunBufTest();
         
         u8 *RestOfMemory = (u8 *)Memory->Data + sizeof(cray);
         u64 RestOfMemorySize = Memory->Size - sizeof(cray);

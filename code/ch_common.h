@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
+#include <time.h>
 
 #define global_variable static
 #define local_persist static
@@ -25,6 +27,12 @@ typedef double f64;
 
 typedef i32 b32;
 typedef bool b8;
+
+inline f32
+CalcSecondsPassed(clock_t BeginClock)
+{
+    return (f32)(clock() - BeginClock) / (f32)CLOCKS_PER_SEC;
+}
 
 #define EPSILON 0.000001f
 #define F32Max FLT_MAX

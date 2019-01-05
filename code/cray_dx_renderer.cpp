@@ -245,6 +245,8 @@ InitDXRenderer(HWND Window, camera *Camera, int Width, int Height)
     Renderer.Width = Width;
     Renderer.Height = Height;
     
+    clock_t BeginClock = clock();
+    
     ID3D11Device *TempDevice = 0;
     ID3D11DeviceContext *TempDeviceContext = 0;
     
@@ -419,6 +421,8 @@ InitDXRenderer(HWND Window, camera *Camera, int Width, int Height)
     
     Renderer.BufferIndex = 0;
     Renderer.LastBufferIndex = 1;
+    
+    Renderer.InitElapsedTime = CalcSecondsPassed(BeginClock);
     
     return Renderer;
 }

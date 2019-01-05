@@ -140,4 +140,5 @@ struct dx_renderer
     int BufferIndex;
     int Width;
     int Height;
+    f32 InitElapsedTime;
 };

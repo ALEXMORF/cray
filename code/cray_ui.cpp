@@ -67,6 +67,7 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
 {
     ImGui::Begin("CRay", 0, ImGuiWindowFlags_AlwaysAutoResize);
     
+    ImGui::Text("DX Renderer Init time: %.3f seconds", CRay->Renderer.InitElapsedTime);
     ImGui::Text("Model Loading time: %.3f seconds", CRay->Model.ModelLoadingTime);
     ImGui::Text("BVH Construction time: %.3f seconds", CRay->Model.BvhConstructionTime);
     ImGui::Text("Triangle Count: %d", CRay->Model.TriangleCount);
@@ -90,6 +91,7 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
         ImGui::Text("Peek TempMemory Usage: %.2f%s", PeekMemUsage.Count, PeekMemUsage.Unit);
         ImGui::Text("Main Arena Usage: %.2f%s", MainArenaMemUsage.Count, MainArenaMemUsage.Unit);
     }
+    ImGui::Text("malloc() call count: %d", GlobalMallocCallCount);
     
     ImGui::Separator();
     {

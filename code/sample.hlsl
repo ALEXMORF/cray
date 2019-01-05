@@ -1,6 +1,11 @@
 #define DEBUG_SHADER 0
-#define TIMEOUT_SHADER 0
-#define TIMEOUT_LIMIT 10
+#define TIMEOUT_TRIANGLE 0
+#define TRIANGLE_LIMIT 10
+//NOTE(chen): I'm timing out my BVH traversal manually due to a driver bug I'm hitting, 
+//            where the traversal would carry on indefinitely whenever I resize buffers,
+//            try disable this and see for yourself if it's true for your platform
+#define TIMEOUT_TRAVERSAL 1
+#define TRAVERSE_LIMIT 10000
 
 struct _triangle
 {
@@ -118,7 +123,7 @@ contact_info ReadGBuffer(float2 TexCoord)
     Res.Albedo = AlbedoTex.Sample(NearestSampler, TexCoord).rgb;
     Res.N = NormalTex.Sample(NearestSampler, TexCoord).xyz;
     float3 HitP = PositionTex.Sample(NearestSampler, TexCoord).xyz;
-    HitP += (0.001 + T_MIN) * Res.N;
+    HitP += (0.01 + T_MIN) * Res.N;
     
     if (Res.N.x != 0.0 || Res.N.y != 0.0 || Res.N.z != 0)
     {
@@ -277,21 +282,40 @@ contact_info Raytrace(in float3 Ro, in float3 Rd)
     int NodesToVisit[32];
     int CurrIndex = 0;
     
-#if TIMEOUT_SHADER
+#if TIMEOUT_TRIANGLE
     int TriTestCount = 0;
 #endif
     
-    while (true)
-    {
 #if DEBUG_SHADER
-        if (CurrIndex >= BvhEntryCount)
+    uint BVHCount = 0;
+    uint BVHStride = 0;
+    BVH.GetDimensions(BVHCount, BVHStride);
+    uint TriangleCount = 0;
+    uint TriangleStride = 0;
+    Triangles.GetDimensions(TriangleCount, TriangleStride);
+    
+    if (BVHCount == 0)
+    {
+        return Res;
+    }
+#endif
+    
+#if TIMEOUT_TRAVERSAL
+    for (int TraverseIndex = 0; TraverseIndex < TRAVERSE_LIMIT; ++TraverseIndex)
+#else
+        while (true)
+#endif
+    {
+        
+#if DEBUG_SHADER
+        if (CurrIndex >= BVHCount)
         {
             discard;
         }
 #endif
         
-#if TIMEOUT_SHADER
-        if (TriTestCount < 0 || TriTestCount > TIMEOUT_LIMIT)
+#if TIMEOUT_TRIANGLE
+        if (TriTestCount < 0 || TriTestCount > TRIANGLE_LIMIT)
         {
             return Res;
         }
@@ -326,7 +350,7 @@ contact_info Raytrace(in float3 Ro, in float3 Rd)
                 int EndOffset = (StartOffset + 
                                  BVH.Load(CurrIndex).PrimitiveCount);
                 
-#if TIMEOUT_SHADER
+#if TIMEOUT_TRIANGLE
                 TriTestCount += BVH.Load(CurrIndex).PrimitiveCount;
 #endif
                 

@@ -14,13 +14,7 @@
 
 /*TODO(chen):
 
-GIVEUP:
-  . Allow window to resize or fullscreen
-  -    likely GPU driver issue with SwapChain::ResizeBuffers()
-  
-. switch to dx11 for the renderer
--   find a better way to combat rasterized first bounce aliasing
- . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
+       . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
 -   Implement stretchy buffer
 -   profile memory usage
 -   replace vertices and triangles structs as they are unnecessary
@@ -119,7 +113,11 @@ RunCRay(app_memory *Memory, input *Input, f32 dT,
         RefreshCamera(&CRay->Renderer, &CRay->Camera);
     }
     
-    ResizeResources(&CRay->Renderer, Width, Height);
+    if (Width != CRay->Renderer.Width || Height != CRay->Renderer.Height)
+    {
+        ResizeResources(&CRay->Renderer, Width, Height);
+    }
+    
     Render(&CRay->Renderer, &CRay->Camera, CRay->T);
     ImGui::Render();
     Present(&CRay->Renderer);

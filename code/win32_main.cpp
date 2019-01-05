@@ -161,10 +161,12 @@ WinMain(HINSTANCE CurrentInstance,
                     {
                         GlobalInput.Keys[KeyCode] = KeyIsDown;
                         
+#if 0
                         if (KeyIsDown && AltIsDown && KeyCode == VK_RETURN)
                         {
                             Win32ToggleFullscreen(Window);
                         }
+#endif
                         
                         if (AltIsDown && KeyCode == VK_F4)
                         {

@@ -204,6 +204,17 @@ CreateWindowSizeCoupledResources(dx_renderer *Renderer)
 }
 
 internal void
+SetViewport(dx_renderer *Renderer, int Width, int Height)
+{
+    D3D11_VIEWPORT Viewport = {};
+    Viewport.Width = (f32)Width;
+    Viewport.Height = (f32)Height;
+    Viewport.MinDepth = 0.0f;
+    Viewport.MaxDepth = 1.0f;
+    Renderer->DeviceContext->RSSetViewports(1, &Viewport);
+}
+
+internal void
 SetPersistentStates(dx_renderer *Renderer, int Width, int Height)
 {   
     ID3D11DeviceContext1 *DeviceContext = Renderer->DeviceContext;
@@ -223,12 +234,7 @@ SetPersistentStates(dx_renderer *Renderer, int Width, int Height)
     
     DeviceContext->PSSetSamplers(0, 1, &Renderer->NearestSampler);
     
-    D3D11_VIEWPORT Viewport = {};
-    Viewport.Width = (f32)Width;
-    Viewport.Height = (f32)Height;
-    Viewport.MinDepth = 0.0f;
-    Viewport.MaxDepth = 1.0f;
-    DeviceContext->RSSetViewports(1, &Viewport);
+    SetViewport(Renderer, Width, Height);
     DeviceContext->RSSetState(Renderer->RasterizerState);
 }
 
@@ -534,6 +540,12 @@ UploadModelToRenderer(dx_renderer *Renderer, loaded_model Model)
     }
     RewindTempArenaToSavedOffset();
     
+    ID3D11ShaderResourceView *ResourceViews[] = {
+        Renderer->TriangleBufferView,
+        Renderer->BVHBufferView,
+    };
+    DeviceContext->PSSetShaderResources(0, ARRAY_COUNT(ResourceViews), ResourceViews);
+    
     D3D11_BUFFER_DESC VertexBufferDesc = {};
     VertexBufferDesc.ByteWidth = sizeof(vertex) * Model.Vertices.Count;
     VertexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
@@ -595,42 +607,37 @@ RefreshCamera(dx_renderer *Renderer, camera *Camera)
 internal void
 ResizeResources(dx_renderer *Renderer, int NewWidth, int NewHeight)
 {
-    if (NewWidth != Renderer->Width || NewHeight != Renderer->Height)
+    ASSERT(NewWidth != Renderer->Width || NewHeight != Renderer->Height);
+    
+    Renderer->Width = NewWidth;
+    Renderer->Height = NewHeight;
+    
+    // release screen-size coupled resources
+    Renderer->BackBuffer->Release();
+    Renderer->BackBufferView->Release();
+    for (int I = 0; I < ARRAY_COUNT(Renderer->SamplerBuffers); ++I)
     {
-        Panic("Not handling window resize");
-        
-        Renderer->Width = NewWidth;
-        Renderer->Height = NewHeight;
-        
-        // release screen-size coupled resources
-        Renderer->BackBuffer->Release();
-        Renderer->BackBufferView->Release();
-        for (int I = 0; I < ARRAY_COUNT(Renderer->SamplerBuffers); ++I)
-        {
-            Release(&Renderer->SamplerBuffers[I]);
-        }
-        Release(&Renderer->PositionBuffer);
-        Release(&Renderer->NormalBuffer);
-        Release(&Renderer->AlbedoBuffer);
-        Release(&Renderer->EmissionBuffer);
-        Renderer->DepthStencilBuffer->Release();
-        Renderer->DepthStencilView->Release();
-        
-        HRESULT ResizedBackBuffers = Renderer->SwapChain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
-        if (FAILED(ResizedBackBuffers))
-        {
-            HRESULT DeviceRemovedReason = Renderer->Device->GetDeviceRemovedReason();
-            ASSERT(!"Failed to resize back buffers");
-        }
-        
-        Renderer->DeviceContext->ClearState();
-        
-        CreateWindowSizeCoupledResources(Renderer);
-        SetPersistentStates(Renderer, NewWidth, NewHeight);
-        
-        Renderer->Context.AspectRatio = (f32)NewWidth / (f32)NewHeight;
-        Refresh(Renderer);
+        Release(&Renderer->SamplerBuffers[I]);
     }
+    Release(&Renderer->PositionBuffer);
+    Release(&Renderer->NormalBuffer);
+    Release(&Renderer->AlbedoBuffer);
+    Release(&Renderer->EmissionBuffer);
+    Renderer->DepthStencilBuffer->Release();
+    Renderer->DepthStencilView->Release();
+    
+    HRESULT ResizedBackBuffers = Renderer->SwapChain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
+    if (FAILED(ResizedBackBuffers))
+    {
+        HRESULT DeviceRemovedReason = Renderer->Device->GetDeviceRemovedReason();
+        ASSERT(!"Failed to resize back buffers");
+    }
+    
+    CreateWindowSizeCoupledResources(Renderer);
+    
+    SetViewport(Renderer, NewWidth, NewHeight);
+    Renderer->Context.AspectRatio = (f32)NewWidth / (f32)NewHeight;
+    Refresh(Renderer);
 }
 
 internal void
@@ -701,11 +708,13 @@ Render(dx_renderer *Renderer, camera *Camera, f32 T)
     DeviceContext->IASetInputLayout(0);
     DeviceContext->VSSetShader(Renderer->FullscreenVS, 0, 0);
     
+#if 0
     ID3D11ShaderResourceView *ResourceViews[] = {
         Renderer->TriangleBufferView,
         Renderer->BVHBufferView,
     };
     DeviceContext->PSSetShaderResources(0, ARRAY_COUNT(ResourceViews), ResourceViews);
+#endif
     
     DeviceContext->PSSetShaderResources(2, 1, &Renderer->SamplerBuffers[LastBufferIndex].SRV);
     DeviceContext->PSSetShader(Renderer->SamplePS, 0, 0);
@@ -726,11 +735,10 @@ internal void
 Present(dx_renderer *Renderer)
 {
     DXGI_PRESENT_PARAMETERS PresentParameters = {};
-    HRESULT PresentedBackBuffer = Renderer->SwapChain->Present1(1, 0, &PresentParameters);
+    HRESULT PresentedBackBuffer = Renderer->SwapChain->Present1(0, 0, &PresentParameters);
     if (FAILED(PresentedBackBuffer))
     {
         HRESULT DeviceRemovedReason = Renderer->Device->GetDeviceRemovedReason();
         ASSERT(!"Failed to present back buffer");
     }
-    
 }

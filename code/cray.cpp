@@ -15,9 +15,12 @@
 /*TODO(chen):
 
        . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
--   use stretchy buffer for all allocations done in LoadModel()
+-   use stretchy buffer for all allocations done BVH construction
+-   remove container type structs (such as linear_bvh)
+-   properly free memory upon reloading
 -   replace vertices and triangles structs as they are unnecessary
--   profile peek mem usage
+-   profile memory usage & check memory leaks
+-   profile peek memory usage
 . Optimize shadow rays: don't return nearest t, instead only a boolean result is needed.
 . Better BVH subdivision termination rule
 . faster BVH traversal (stackless)
@@ -82,6 +85,11 @@ RunBufTest()
         ASSERT(Array[I] == I);
     }
     BufFree(Array);
+    Array = 0;
+    
+    int InitCount = 5;
+    Array = BufInit(InitCount, int);
+    ASSERT(BufCount(Array) == InitCount);
 }
 
 internal void
@@ -100,11 +108,11 @@ RunCRay(app_memory *Memory, input *Input, f32 dT,
         u8 *RestOfMemory = (u8 *)Memory->Data + sizeof(cray);
         u64 RestOfMemorySize = Memory->Size - sizeof(cray);
         CRay->MainArena = InitMemoryArena(RestOfMemory, RestOfMemorySize);
-        GlobalTempArena = PushMemoryArena(&CRay->MainArena, GB(1));
+        GlobalTempArena = PushMemoryArena(&CRay->MainArena, MB(2));
         
         CRay->Camera = InitCamera();
         CRay->Renderer = InitDXRenderer(Window, &CRay->Camera, Width, Height);
-        CRay->Model = LoadModel(GlobalPrefabs[0], &GlobalTempArena);
+        CRay->Model = LoadModel(GlobalPrefabs[0]);
         UploadModelToRenderer(&CRay->Renderer, CRay->Model);
         
         CRay->ShowUI = true;

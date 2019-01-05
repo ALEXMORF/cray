@@ -70,8 +70,8 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
     ImGui::Text("DX Renderer Init time: %.3f seconds", CRay->Renderer.InitElapsedTime);
     ImGui::Text("Model Loading time: %.3f seconds", CRay->Model.ModelLoadingTime);
     ImGui::Text("BVH Construction time: %.3f seconds", CRay->Model.BvhConstructionTime);
-    ImGui::Text("Triangle Count: %d", CRay->Model.TriangleCount);
-    ImGui::Text("Geometry Vertex Count: %d", CRay->Model.GeometryVertexCount);
+    ImGui::Text("Triangle Count: %d", BufCount(CRay->Model.Triangles));
+    ImGui::Text("Geometry Vertex Count: %d", BufCount(CRay->Model.Vertices));
     ImGui::Text("BVH Node Count: %d", CRay->Model.BvhEntryCount);
     ImGui::Text("Render time: %.3f miliseconds", 1000.0f*dT);
     {
@@ -130,7 +130,7 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
         {
             if (ChosenPrefabIndex >= 0 && ChosenPrefabIndex < ARRAY_COUNT(GlobalPrefabs))
             {
-                CRay->Model = LoadModel(GlobalPrefabs[ChosenPrefabIndex], &GlobalTempArena);
+                CRay->Model = LoadModel(GlobalPrefabs[ChosenPrefabIndex]);
                 UploadModelToRenderer(&CRay->Renderer, CRay->Model);
             }
             ImGui::CloseCurrentPopup();

@@ -126,7 +126,7 @@ WinMain(HINSTANCE CurrentInstance,
                                     Win32WindowCallback);
     
     app_memory AppMemory = {};
-    AppMemory.Size = GB(2);
+    AppMemory.Size = MB(4);
     AppMemory.Data = Win32AllocateMemory(AppMemory.Size);
     
     if (!AppMemory.Data)

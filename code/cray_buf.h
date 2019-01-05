@@ -9,11 +9,25 @@ struct buf_hdr
 
 #define BufHdr(Array) ((buf_hdr *)Array - 1)
 #define BufCount(Array) BufHdr(Array)->Count
+#define BufLast(Array) (Array)[BufCount(Array)-1]
 #define BufFree(Array) free(BufHdr(Array))
-#define BufPush(Array, Elmt) ((Array) = (decltype(Array))BufExtend(Array, sizeof(Elmt)), (Array)[BufCount(Array)-1] = Elmt)
+#define BufPush(Array, Elmt) ((Array) = (decltype(Array))__BufExtend(Array, sizeof(Elmt)), (Array)[BufCount(Array)-1] = Elmt)
+#define BufInit(Count, Type) (Type *)__BufInit(Count, sizeof(Type))
 
 internal void *
-BufExtend(void *Buf, size_t ElmtSize)
+__BufInit(u64 Count, size_t ElmtSize)
+{
+    void *HdrBuf = malloc(sizeof(buf_hdr) + Count * ElmtSize);
+    buf_hdr *Hdr = (buf_hdr *)HdrBuf;
+    Hdr->Count = Count;
+    Hdr->Cap = Count;
+    
+    void *Buf = Hdr + 1;
+    return Buf;
+}
+
+internal void *
+__BufExtend(void *Buf, size_t ElmtSize)
 {
     void *Result = 0;
     

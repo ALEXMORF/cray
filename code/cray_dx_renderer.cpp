@@ -510,12 +510,12 @@ UploadModelToRenderer(dx_renderer *Renderer, loaded_model Model)
     
     SaveTempArenaOffset();
     {
-        int PackedTriangleCount = Model.Triangles.Count; 
+        int PackedTriangleCount = (int)BufCount(Model.Triangles); 
         packed_triangle *PackedTriangles = PushTempArray(PackedTriangleCount,
                                                          packed_triangle);
         for (int TriIndex = 0; TriIndex < PackedTriangleCount; ++TriIndex)
         {
-            PackedTriangles[TriIndex] = Pack(Model.Triangles.Data[TriIndex]);
+            PackedTriangles[TriIndex] = Pack(Model.Triangles[TriIndex]);
         }
         
         Renderer->TriangleBuffer = CreateStructuredBuffer(Device,
@@ -551,14 +551,14 @@ UploadModelToRenderer(dx_renderer *Renderer, loaded_model Model)
     DeviceContext->PSSetShaderResources(0, ARRAY_COUNT(ResourceViews), ResourceViews);
     
     D3D11_BUFFER_DESC VertexBufferDesc = {};
-    VertexBufferDesc.ByteWidth = sizeof(vertex) * Model.Vertices.Count;
+    VertexBufferDesc.ByteWidth = sizeof(vertex) * (int)BufCount(Model.Vertices);
     VertexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
     VertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     D3D11_SUBRESOURCE_DATA VertexBufferData = {};
-    VertexBufferData.pSysMem = Model.Vertices.Data;
+    VertexBufferData.pSysMem = Model.Vertices;
     HRESULT CreatedVertexBuffer = Device->CreateBuffer(&VertexBufferDesc, &VertexBufferData, &Renderer->VertexBuffer);
     ASSERT(SUCCEEDED(CreatedVertexBuffer));
-    Renderer->VertexCount = Model.Vertices.Count;
+    Renderer->VertexCount = (int)BufCount(Model.Vertices);
 }
 
 internal void

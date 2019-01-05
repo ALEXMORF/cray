@@ -1,81 +1,50 @@
-internal obj_model
-InstantiateObjTemporarily(char *Path, mat4 XForm)
+internal vertex *
+InstantiateObj(char *Path, mat4 XForm)
 {
-    obj_model Model = LoadObj(Path, &GlobalTempArena);
+    vertex *Vertices = LoadObj(Path);
     
-    for (int VertIndex = 0; VertIndex < Model.VertexCount; ++VertIndex)
+    for (int VertIndex = 0; VertIndex < BufCount(Vertices); ++VertIndex)
     {
-        Model.Vertices[VertIndex].P = ApplyMat4(Model.Vertices[VertIndex].P, XForm);
-        Model.Vertices[VertIndex].N *= Mat3(XForm);
+        Vertices[VertIndex].P = ApplyMat4(Vertices[VertIndex].P, XForm);
+        Vertices[VertIndex].N *= Mat3(XForm);
     }
     
-    return Model;
+    return Vertices;
 }
 
-internal vertices 
-ConvertModelsToVertices(obj_model *Models, int ModelCount, 
-                        memory_arena *Arena)
+internal triangle *
+ConvertVerticesToTriangles(vertex *Vertices)
 {
-    vertices Result = {};
-    
-    for (int ModelIndex = 0; ModelIndex < ModelCount; ++ModelIndex)
-    {
-        Result.Count += Models[ModelIndex].VertexCount;
-    }
-    Result.Data = PushArray(Arena, Result.Count, vertex);
+    triangle *Triangles = 0;
     
     int VertexCursor = 0;
-    for (int ModelIndex = 0; ModelIndex < ModelCount; ++ModelIndex)
+    while (VertexCursor < BufCount(Vertices))
     {
-        obj_model *Model = Models + ModelIndex;
-        for (int VertIndex = 0; VertIndex < Model->VertexCount; ++VertIndex)
-        {
-            Result.Data[VertexCursor++] = Model->Vertices[VertIndex];
-        }
+        triangle NewTriangle = {};
+        
+        NewTriangle.N = Normalize(Vertices[VertexCursor].N);
+        NewTriangle.Albedo = Vertices[VertexCursor].Albedo;
+        NewTriangle.Emission = Vertices[VertexCursor].Emission;
+        
+        NewTriangle.A = Vertices[VertexCursor++].P;
+        NewTriangle.B = Vertices[VertexCursor++].P;
+        NewTriangle.C = Vertices[VertexCursor++].P;
+        
+        BufPush(Triangles, NewTriangle);
     }
     
-    return Result;
-}
-
-internal triangles
-ConvertVerticesToTriangles(vertices Vertices, 
-                           memory_arena *Arena)
-{
-    triangles Result = {};
-    
-    Result.Count = Vertices.Count / 3;
-    Result.Data = PushArray(Arena, Result.Count, triangle);
-    
-    int VertexCursor = 0;
-    for (int TriIndex = 0; TriIndex < Result.Count; ++TriIndex)
-    {
-        triangle *Triangle = Result.Data + TriIndex;
-        
-        Triangle->N = Normalize(Vertices.Data[VertexCursor].N);
-        Triangle->Albedo = Vertices.Data[VertexCursor].Albedo;
-        Triangle->Emission = Vertices.Data[VertexCursor].Emission;
-        
-        Triangle->A = Vertices.Data[VertexCursor++].P;
-        Triangle->B = Vertices.Data[VertexCursor++].P;
-        Triangle->C = Vertices.Data[VertexCursor++].P;
-    }
-    
-    return Result;
+    return Triangles;
 }
 
 internal loaded_model
-LoadModel(char *ObjPath, mat4 XForm, memory_arena *Arena)
+LoadModel(char *ObjPath, mat4 XForm)
 {
     loaded_model LoadedModel = {};
     
     clock_t BeginClock = clock();
     
-    int ModelCount = 0;
-    obj_model Models[200] = {};
-    Models[ModelCount++] = InstantiateObjTemporarily(ObjPath, XForm);
-    
-    vertices Vertices = ConvertModelsToVertices(Models, ARRAY_COUNT(Models), Arena);
-    triangles Triangles = ConvertVerticesToTriangles(Vertices, Arena);
+    vertex *Vertices = InstantiateObj(ObjPath, XForm);
+    triangle *Triangles = ConvertVerticesToTriangles(Vertices);
     
     LoadedModel.ModelLoadingTime = CalcSecondsPassed(BeginClock);
     
@@ -83,23 +52,19 @@ LoadModel(char *ObjPath, mat4 XForm, memory_arena *Arena)
     //NOTE(chen): BVH modifies the triangle array, therefore 
     //            triangles' SSBO binding must happen after 
     //            BVH's construction
-    linear_bvh BVH = ConstructLinearBVH(Triangles.Data, 
-                                        Triangles.Count, 
-                                        Arena);
+    linear_bvh BVH = ConstructLinearBVH(Triangles, &GlobalTempArena);
     LoadedModel.BvhConstructionTime = CalcSecondsPassed(BeginClock);
     
     LoadedModel.Vertices = Vertices;
     LoadedModel.Triangles = Triangles;
     LoadedModel.BVH = BVH;
-    LoadedModel.GeometryVertexCount = Vertices.Count;
-    LoadedModel.TriangleCount = Triangles.Count;
     LoadedModel.BvhEntryCount = BVH.Count;
     
     return LoadedModel;
 }
 
 internal loaded_model
-LoadModel(model_prefab Prefab, memory_arena *Arena)
+LoadModel(model_prefab Prefab)
 {
-    return LoadModel(Prefab.Path, Prefab.XForm, Arena);
+    return LoadModel(Prefab.Path, Prefab.XForm);
 }

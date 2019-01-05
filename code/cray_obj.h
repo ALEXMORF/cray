@@ -16,9 +16,3 @@ struct vertex
     v3 Albedo;
     v3 Emission;
 };
-
-struct obj_model
-{
-    vertex *Vertices;
-    int VertexCount;
-};

@@ -16,8 +16,7 @@ struct loaded_model
     vertex *Vertices;
     triangle *Triangles;
     //TODO(chen): replace with stretchy buffer
-    linear_bvh BVH;
-    int BvhEntryCount;
+    bvh_entry *BVH;
     
     f32 ModelLoadingTime;
     f32 BvhConstructionTime;

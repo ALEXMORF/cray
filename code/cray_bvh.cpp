@@ -151,9 +151,9 @@ Partition(primitive *Prims, int Count, f32 Cut, axis Axis)
 }
 
 internal bvh_node *
-ConstructBVH(primitive *Prims, int StartIndex, int Count, memory_arena *Arena)
+ConstructBVH(primitive *Prims, int StartIndex, int Count)
 {
-    bvh_node *Node = PushStruct(Arena, bvh_node);
+    bvh_node *Node = (bvh_node *)malloc(sizeof(bvh_node));
     *Node = {};
     
     bound TotalBound = {};
@@ -199,8 +199,8 @@ ConstructBVH(primitive *Prims, int StartIndex, int Count, memory_arena *Arena)
         
         Node->PrimitiveCount = -1;
         Node->PartitionAxis = PartitionAxis;
-        Node->Left = ConstructBVH(Prims, StartIndex, LeftCount, Arena);
-        Node->Right = ConstructBVH(Prims, StartIndex+LeftCount, RightCount, Arena);
+        Node->Left = ConstructBVH(Prims, StartIndex, LeftCount);
+        Node->Right = ConstructBVH(Prims, StartIndex+LeftCount, RightCount);
     }
     else
     {
@@ -219,7 +219,7 @@ CountNodes(bvh_node *Node)
 }
 
 internal void
-Flatten(bvh_node *Node, bvh_entry *Array, int *Offset)
+BVHFlatten(bvh_node *Node, bvh_entry *Array, int *Offset)
 {
     if (!Node) return;
     
@@ -232,9 +232,9 @@ Flatten(bvh_node *Node, bvh_entry *Array, int *Offset)
     if (Node->PrimitiveCount == -1)
     {
         Array[CurrIndex].Axis = Node->PartitionAxis;
-        Flatten(Node->Left, Array, Offset);
+        BVHFlatten(Node->Left, Array, Offset);
         Array[CurrIndex].SecondChildOffset = *Offset;
-        Flatten(Node->Right, Array, Offset);
+        BVHFlatten(Node->Right, Array, Offset);
     }
     else
     {
@@ -242,13 +242,23 @@ Flatten(bvh_node *Node, bvh_entry *Array, int *Offset)
     }
 }
 
-internal linear_bvh
-ConstructLinearBVH(triangle *Triangles, memory_arena *Arena)
+internal void
+BVHFreeTree(bvh_node *Node)
 {
-    linear_bvh Result = {};
+    if (!Node) return;
+    
+    BVHFreeTree(Node->Left);
+    BVHFreeTree(Node->Right);
+    free(Node);
+}
+
+internal bvh_entry *
+ConstructLinearBVH(triangle *Triangles)
+{
+    bvh_entry *BVH = 0;
     
     //NOTE(chen): construct BVH
-    primitive *Prims = PushTempArray(BufCount(Triangles), primitive);
+    primitive *Prims = BufInit(BufCount(Triangles), primitive);
     for (int PrimIndex = 0; PrimIndex < BufCount(Triangles); ++PrimIndex)
     {
         primitive *Prim = Prims + PrimIndex;
@@ -256,16 +266,16 @@ ConstructLinearBVH(triangle *Triangles, memory_arena *Arena)
         Prim->Bound = BoundTriangle(Triangles[PrimIndex]);
         Prim->Centroid = 0.5f * Prim->Bound.Min + 0.5f * Prim->Bound.Max;
     }
-    bvh_node *Root = ConstructBVH(Prims, 0, (int)BufCount(Triangles), &GlobalTempArena);
+    bvh_node *Root = ConstructBVH(Prims, 0, (int)BufCount(Triangles));
     
     //NOTE(chen): flatten BVH
-    Result.Count = CountNodes(Root);
-    Result.Data = PushArray(Arena, Result.Count, bvh_entry);
+    BVH = BufInit(CountNodes(Root), bvh_entry);
     int Offset = 0;
-    Flatten(Root, Result.Data, &Offset);
+    BVHFlatten(Root, BVH, &Offset);
+    BVHFreeTree(Root);
     
     //NOTE(chen): resort triangles to match order of primitives
-    triangle *SortedTriangles = PushTempArray(BufCount(Triangles), triangle);
+    triangle *SortedTriangles = BufInit(BufCount(Triangles), triangle);
     for (int PrimIndex = 0; PrimIndex < BufCount(Triangles); ++PrimIndex)
     {
         int SortedIndex = Prims[PrimIndex].TriIndex;
@@ -276,5 +286,8 @@ ConstructLinearBVH(triangle *Triangles, memory_arena *Arena)
         Triangles[TriIndex] = SortedTriangles[TriIndex];
     }
     
-    return Result;
+    BufFree(SortedTriangles);
+    BufFree(Prims);
+    
+    return BVH;
 }

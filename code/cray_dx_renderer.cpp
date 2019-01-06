@@ -508,41 +508,37 @@ UploadModelToRenderer(dx_renderer *Renderer, loaded_model Model)
     ID3D11Device1 *Device = Renderer->Device;
     ID3D11DeviceContext1 *DeviceContext = Renderer->DeviceContext;
     
-    SaveTempArenaOffset();
+    // upload packed triangles
     {
-        int PackedTriangleCount = (int)BufCount(Model.Triangles); 
-        packed_triangle *PackedTriangles = PushTempArray(PackedTriangleCount,
-                                                         packed_triangle);
-        for (int TriIndex = 0; TriIndex < PackedTriangleCount; ++TriIndex)
+        packed_triangle *PackedTriangles = BufInit(BufCount(Model.Triangles), packed_triangle);
+        for (int TriIndex = 0; TriIndex < BufCount(PackedTriangles); ++TriIndex)
         {
             PackedTriangles[TriIndex] = Pack(Model.Triangles[TriIndex]);
         }
         
-        Renderer->TriangleBuffer = CreateStructuredBuffer(Device,
-                                                          PackedTriangles, 
-                                                          PackedTriangleCount,
+        Renderer->TriangleBuffer = CreateStructuredBuffer(Device, PackedTriangles, 
+                                                          (int)BufCount(PackedTriangles),
                                                           sizeof(packed_triangle),
                                                           &Renderer->TriangleBufferView);
+        
+        BufFree(PackedTriangles);
     }
-    RewindTempArenaToSavedOffset();
     
-    SaveTempArenaOffset();
+    // upload packed BVH
     {
-        int PackedBVHCount = Model.BVH.Count; 
-        packed_bvh_entry *PackedBVH = PushTempArray(PackedBVHCount,
-                                                    packed_bvh_entry);
-        for (int EntryIndex = 0; EntryIndex < PackedBVHCount; ++EntryIndex)
+        packed_bvh_entry *PackedBVH = BufInit(BufCount(Model.BVH), packed_bvh_entry);
+        for (int EntryIndex = 0; EntryIndex < BufCount(PackedBVH); ++EntryIndex)
         {
-            PackedBVH[EntryIndex] = Pack(Model.BVH.Data[EntryIndex]);
+            PackedBVH[EntryIndex] = Pack(Model.BVH[EntryIndex]);
         }
         
-        Renderer->BVHBuffer = CreateStructuredBuffer(Device, 
-                                                     PackedBVH, 
-                                                     PackedBVHCount,
+        Renderer->BVHBuffer = CreateStructuredBuffer(Device, PackedBVH, 
+                                                     (int)BufCount(PackedBVH),
                                                      sizeof(packed_bvh_entry),
                                                      &Renderer->BVHBufferView);
+        
+        BufFree(PackedBVH);
     }
-    RewindTempArenaToSavedOffset();
     
     ID3D11ShaderResourceView *ResourceViews[] = {
         Renderer->TriangleBufferView,

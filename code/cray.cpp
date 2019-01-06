@@ -15,11 +15,7 @@
 /*TODO(chen):
 
        . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
--   use stretchy buffer for all allocations done BVH construction
--   remove container type structs (such as linear_bvh)
--   properly free memory upon reloading
--   replace vertices and triangles structs as they are unnecessary
--   profile memory usage & check memory leaks
+-   profile/debug malloc & check memory leaks
 -   profile peek memory usage
 . Optimize shadow rays: don't return nearest t, instead only a boolean result is needed.
 . Better BVH subdivision termination rule
@@ -63,36 +59,6 @@
 */
 
 internal void
-RunBufTest()
-{
-    int *Array = 0;
-    BufPush(Array, 0);
-    BufPush(Array, 1);
-    BufPush(Array, 2);
-    BufPush(Array, 3);
-    ASSERT(BufCount(Array) == 4);
-    BufFree(Array);
-    Array = 0;
-    
-    int PushCount = 100000;
-    for (int I = 0; I < PushCount; ++I)
-    {
-        BufPush(Array, I);
-    }
-    ASSERT(BufCount(Array) == PushCount);
-    for (int I = 0; I < PushCount; ++I)
-    {
-        ASSERT(Array[I] == I);
-    }
-    BufFree(Array);
-    Array = 0;
-    
-    int InitCount = 5;
-    Array = BufInit(InitCount, int);
-    ASSERT(BufCount(Array) == InitCount);
-}
-
-internal void
 RunCRay(app_memory *Memory, input *Input, f32 dT, 
         HWND Window, int Width, int Height, panic *PlatformPanic)
 {
@@ -103,12 +69,10 @@ RunCRay(app_memory *Memory, input *Input, f32 dT,
     {
         __PanicStr = PlatformPanic;
         
-        RunBufTest();
-        
         u8 *RestOfMemory = (u8 *)Memory->Data + sizeof(cray);
         u64 RestOfMemorySize = Memory->Size - sizeof(cray);
         CRay->MainArena = InitMemoryArena(RestOfMemory, RestOfMemorySize);
-        GlobalTempArena = PushMemoryArena(&CRay->MainArena, MB(2));
+        GlobalTempArena = PushMemoryArena(&CRay->MainArena, MB(0));
         
         CRay->Camera = InitCamera();
         CRay->Renderer = InitDXRenderer(Window, &CRay->Camera, Width, Height);

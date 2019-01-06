@@ -52,9 +52,3 @@ struct bvh_entry
     i32 PrimitiveCount;
     i32 Axis;
 };
-
-struct linear_bvh
-{
-    bvh_entry *Data;
-    int Count;
-};

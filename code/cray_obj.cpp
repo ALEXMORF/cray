@@ -4,7 +4,7 @@
 #define sscanf DONT_USE_SSCANF_BAD_BAD
 
 internal char *
-ReadFileTemporarily(char *FilePath)
+ReadFile(char *FilePath)
 {
     char *Buffer = 0;
     
@@ -15,7 +15,7 @@ ReadFileTemporarily(char *FilePath)
         int FileSize = ftell(File);
         rewind(File);
         
-        Buffer = PushTempArray(FileSize+1, char);
+        Buffer = (char *)malloc(FileSize+1);
         Buffer[FileSize] = 0;
         fread(Buffer, 1, FileSize, File);
         
@@ -267,7 +267,7 @@ LoadObj(char *Path)
     
     material *Mats = 0;
     
-    char *MtlFileContent = ReadFileTemporarily(MtlPath);
+    char *MtlFileContent = ReadFile(MtlPath);
     if (MtlFileContent)
     {
         char *MtlFileWalker = MtlFileContent;
@@ -305,8 +305,9 @@ LoadObj(char *Path)
             MtlFileWalker = GotoNextLine(MtlFileWalker);
         }
     }
+    free(MtlFileContent);
     
-    char *ObjFileContent = ReadFileTemporarily(ObjPath);
+    char *ObjFileContent = ReadFile(ObjPath);
     if (!ObjFileContent)
     {
         Panic("couldn't load OBJ file with the given path %s", ObjPath);
@@ -422,6 +423,7 @@ LoadObj(char *Path)
         
         ObjFileWalker = GotoNextLine(ObjFileWalker);
     }
+    free(ObjFileContent);
     
     return Vertices;
 }

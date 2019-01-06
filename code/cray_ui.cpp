@@ -44,6 +44,7 @@ struct allocation_info
     u64 AllocSize;
     char *File;
     int Line;
+    char *Func;
 };
 
 internal value_with_unit
@@ -124,7 +125,12 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
                     NewInfo.AllocSize = Entry->AllocSize;
                     NewInfo.File = Entry->File;
                     NewInfo.Line = Entry->Line;
-                    BufPush(AllocationInfos, NewInfo);
+                    NewInfo.Func = Entry->Func;
+                    
+                    if (strstr(NewInfo.File, "imgui") == 0)
+                    {
+                        BufPush(AllocationInfos, NewInfo);
+                    }
                     
                     Entry = Entry->Next;
                 }
@@ -133,7 +139,8 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
             for (int InfoIndex = 0; InfoIndex < BufCount(AllocationInfos); ++InfoIndex)
             {
                 allocation_info *Info = AllocationInfos + InfoIndex;
-                ImGui::Text("Allocation at %s:%d, addr: %llu, size: %llu", Info->File, Info->Line, (u64)Info->Pointer, Info->AllocSize);
+                value_with_unit AllocSize = CalcProperMemoryUnit(Info->AllocSize);
+                ImGui::Text("Allocation at %s:%d, func: %s, addr: %llu, size: %.2f%s", Info->File, Info->Line, Info->Func, (u64)Info->Pointer, AllocSize.Count, AllocSize.Unit);
             }
             
             BufFree(AllocationInfos);

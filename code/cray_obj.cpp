@@ -425,5 +425,8 @@ LoadObj(char *Path)
     }
     free(ObjFileContent);
     
+    BufFree(Mats);
+    BufFree(TempVertices);
+    BufFree(TempNormals);
     return Vertices;
 }

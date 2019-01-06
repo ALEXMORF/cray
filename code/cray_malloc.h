@@ -7,13 +7,14 @@ struct alloc_entry
     u64 AllocSize;
     char *File;
     int Line;
+    char *Func;
     
     alloc_entry *Next;
 };
 
 global_variable u64 GlobalMemoryUsage;
 global_variable u64 GlobalPeekMemoryUsage;
-global_variable alloc_entry GlobalAllocTable[1000];
+global_variable alloc_entry GlobalAllocTable[100000];
 global_variable b32 GlobalDisableAllocProfiling;
 
 internal void
@@ -35,7 +36,7 @@ Hash(void *Pointer)
 }
 
 internal alloc_entry
-InitEntry(void *Pointer, u64 AllocSize, char *File, int Line)
+InitEntry(void *Pointer, u64 AllocSize, char *File, int Line, char *Func)
 {
     alloc_entry Result = {};
     
@@ -43,12 +44,13 @@ InitEntry(void *Pointer, u64 AllocSize, char *File, int Line)
     Result.AllocSize = AllocSize;
     Result.File = File;
     Result.Line = Line;
+    Result.Func = Func;
     
     return Result;
 }
 
 internal void 
-StoreAlloc(void *Pointer, u64 AllocSize, char *File, int Line)
+StoreAlloc(void *Pointer, u64 AllocSize, char *File, int Line, char *Func)
 {
     if (GlobalDisableAllocProfiling) return;
     if (!Pointer) return;
@@ -64,7 +66,7 @@ StoreAlloc(void *Pointer, u64 AllocSize, char *File, int Line)
     alloc_entry *Entry = GlobalAllocTable + Index;
     if (!Entry->Pointer) // no collision
     {
-        *Entry = InitEntry(Pointer, AllocSize, File, Line);
+        *Entry = InitEntry(Pointer, AllocSize, File, Line, Func);
     }
     else // collision
     {
@@ -75,7 +77,7 @@ StoreAlloc(void *Pointer, u64 AllocSize, char *File, int Line)
         }
         
         alloc_entry *NewEntry = (alloc_entry *)calloc(1, sizeof(alloc_entry));
-        *NewEntry = InitEntry(Pointer, AllocSize, File, Line);
+        *NewEntry = InitEntry(Pointer, AllocSize, File, Line, Func);
         
         LastEntry->Next = NewEntry;
     }
@@ -126,10 +128,10 @@ RemoveAlloc(void *Pointer)
     }
 }
 
-void *DebugMalloc(size_t Size, char *File, int Line)
+void *DebugMalloc(size_t Size, char *File, int Line, char *Func)
 {
     void *Ptr = malloc(Size);
-    StoreAlloc(Ptr, Size, File, Line);
+    StoreAlloc(Ptr, Size, File, Line, Func);
     return Ptr;
 }
 
@@ -139,14 +141,14 @@ void DebugFree(void *Pointer)
     free(Pointer);
 }
 
-void *DebugRealloc(void *OldPointer, size_t NewSize, char *File, int Line)
+void *DebugRealloc(void *OldPointer, size_t NewSize, char *File, int Line, char *Func)
 {
     RemoveAlloc(OldPointer);
     void *NewPointer = realloc(OldPointer, NewSize);
-    StoreAlloc(NewPointer, NewSize, File, Line);
+    StoreAlloc(NewPointer, NewSize, File, Line, Func);
     return NewPointer;
 }
 
-#define malloc(Size) DebugMalloc(Size, __FILE__, __LINE__)
-#define realloc(Pointer, NewSize) DebugRealloc(Pointer, NewSize, __FILE__, __LINE__)
+#define malloc(Size) DebugMalloc(Size, __FILE__, __LINE__, __func__)
+#define realloc(Pointer, NewSize) DebugRealloc(Pointer, NewSize, __FILE__, __LINE__, __func__)
 #define free(Pointer) DebugFree(Pointer)

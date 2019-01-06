@@ -15,9 +15,9 @@
 /*TODO(chen):
 
        . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
--   profile memory in use & check memory leaks
--   profile peek memory usage
-. Optimize shadow rays: don't return nearest t, instead only a boolean result is needed.
+-   hunt down the last memory leaks
+-   optimize hash table for large data storage
+ . Optimize shadow rays: don't return nearest t, instead only a boolean result is needed.
 . Better BVH subdivision termination rule
 . faster BVH traversal (stackless)
 . implement SBVH

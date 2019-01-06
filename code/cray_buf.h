@@ -10,9 +10,15 @@ struct buf_hdr
 #define BufHdr(Array) ((buf_hdr *)Array - 1)
 #define BufCount(Array) BufHdr(Array)->Count
 #define BufLast(Array) (Array)[BufCount(Array)-1]
-#define BufFree(Array) free(BufHdr(Array))
 #define BufPush(Array, Elmt) ((Array) = (decltype(Array))__BufExtend(Array, sizeof(Elmt)), (Array)[BufCount(Array)-1] = Elmt)
 #define BufInit(Count, Type) (Type *)__BufInit(Count, sizeof(Type))
+
+internal void
+BufFree(void *Buf)
+{
+    if (!Buf) return;
+    free(BufHdr(Buf));
+}
 
 internal void *
 __BufInit(u64 Count, size_t ElmtSize)

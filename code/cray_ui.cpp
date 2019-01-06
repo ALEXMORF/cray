@@ -38,6 +38,14 @@ struct value_with_unit
     char *Unit;
 };
 
+struct allocation_info
+{
+    void *Pointer;
+    u64 AllocSize;
+    char *File;
+    int Line;
+};
+
 internal value_with_unit
 CalcProperMemoryUnit(u64 Count)
 {
@@ -67,33 +75,74 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
 {
     ImGui::Begin("CRay", 0, ImGuiWindowFlags_AlwaysAutoResize);
     
-    ImGui::Text("DX Renderer Init time: %.3f seconds", CRay->Renderer.InitElapsedTime);
-    ImGui::Text("Model Loading time: %.3f seconds", CRay->Model.ModelLoadingTime);
-    ImGui::Text("BVH Construction time: %.3f seconds", CRay->Model.BvhConstructionTime);
-    ImGui::Text("Triangle Count: %d", BufCount(CRay->Model.Triangles));
-    ImGui::Text("Geometry Vertex Count: %d", BufCount(CRay->Model.Vertices));
-    ImGui::Text("BVH Node Count: %d", BufCount(CRay->Model.BVH));
-    ImGui::Text("Render time: %.3f miliseconds", 1000.0f*dT);
+    if (ImGui::CollapsingHeader("Profilings"))
     {
-        int PixelCount = Width * Height;
-        int RayPerPixel = 2 * CRay->Renderer.Settings.MaxBounceCount;
-        if (CRay->Renderer.Settings.RasterizeFirstBounce)
+        ImGui::Text("DX Renderer Init time: %.3f seconds", CRay->Renderer.InitElapsedTime);
+        ImGui::Text("Model Loading time: %.3f seconds", CRay->Model.ModelLoadingTime);
+        ImGui::Text("BVH Construction time: %.3f seconds", CRay->Model.BvhConstructionTime);
+        ImGui::Text("Triangle Count: %d", BufCount(CRay->Model.Triangles));
+        ImGui::Text("Geometry Vertex Count: %d", BufCount(CRay->Model.Vertices));
+        ImGui::Text("BVH Node Count: %d", BufCount(CRay->Model.BVH));
+        ImGui::Text("Render time: %.3f miliseconds", 1000.0f*dT);
         {
-            RayPerPixel -= 1;
+            int PixelCount = Width * Height;
+            int RayPerPixel = 2 * CRay->Renderer.Settings.MaxBounceCount;
+            if (CRay->Renderer.Settings.RasterizeFirstBounce)
+            {
+                RayPerPixel -= 1;
+            }
+            f32 RaysPerSecond = (RayPerPixel * PixelCount) / dT;
+            
+            ImGui::Text("Rate of RT: %.3f Mrays/second", RaysPerSecond / 1000000.0f);
         }
-        f32 RaysPerSecond = (RayPerPixel * PixelCount) / dT;
-        
-        ImGui::Text("Rate of RT: %.3f Mrays/second", RaysPerSecond / 1000000.0f);
     }
+    
+    if (ImGui::CollapsingHeader("Inspect allocations"))
     {
         value_with_unit PeekMemUsage = CalcProperMemoryUnit(GlobalTempArena.PeekUsed);
-        value_with_unit MainArenaMemUsage = CalcProperMemoryUnit(CRay->MainArena.Used);
         ImGui::Text("Peek TempMemory Usage: %.2f%s", PeekMemUsage.Count, PeekMemUsage.Unit);
+        value_with_unit MainArenaMemUsage = CalcProperMemoryUnit(CRay->MainArena.Used);
         ImGui::Text("Main Arena Usage: %.2f%s", MainArenaMemUsage.Count, MainArenaMemUsage.Unit);
+        value_with_unit DynamicMemUsage = CalcProperMemoryUnit(GlobalMemoryUsage);
+        ImGui::Text("Dynamic Memory Usage: %.2f%s", DynamicMemUsage.Count, DynamicMemUsage.Unit);
+        value_with_unit PeekDynamicMemUsage = CalcProperMemoryUnit(GlobalPeekMemoryUsage);
+        ImGui::Text("Peek Dynamic Memory Usage: %.2f%s", PeekDynamicMemUsage.Count, PeekDynamicMemUsage.Unit);
+        
+        // allocation list
+        ImGui::Separator();
+        {
+            DisableAllocProfiling();
+            
+            allocation_info *AllocationInfos = 0;
+            for (int EntryIndex = 0; EntryIndex < ARRAY_COUNT(GlobalAllocTable); ++EntryIndex)
+            {
+                alloc_entry *Entry = GlobalAllocTable + EntryIndex;
+                while (Entry && Entry->Pointer)
+                {
+                    allocation_info NewInfo = {};
+                    NewInfo.Pointer = Entry->Pointer;
+                    NewInfo.AllocSize = Entry->AllocSize;
+                    NewInfo.File = Entry->File;
+                    NewInfo.Line = Entry->Line;
+                    BufPush(AllocationInfos, NewInfo);
+                    
+                    Entry = Entry->Next;
+                }
+            }
+            
+            for (int InfoIndex = 0; InfoIndex < BufCount(AllocationInfos); ++InfoIndex)
+            {
+                allocation_info *Info = AllocationInfos + InfoIndex;
+                ImGui::Text("Allocation at %s:%d, addr: %llu, size: %llu", Info->File, Info->Line, (u64)Info->Pointer, Info->AllocSize);
+            }
+            
+            BufFree(AllocationInfos);
+            
+            EnableAllocProfiling();
+        }
     }
-    ImGui::Text("malloc() call count: %d", GlobalMallocCallCount);
     
-    ImGui::Separator();
+    if (ImGui::CollapsingHeader("Settings"))
     {
         render_settings *Settings = &CRay->Renderer.Settings;
         ImGui::Checkbox("Rasterize First Bounce", (bool *)&Settings->RasterizeFirstBounce);

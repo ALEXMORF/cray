@@ -398,7 +398,7 @@ InitDXRenderer(HWND Window, camera *Camera, int Width, int Height)
     
     Renderer.Settings.Exposure = 0.5f;
     Renderer.Settings.FOV = DegreeToRadian(45.0f);
-    Renderer.Settings.RasterizeFirstBounce = true;
+    Renderer.Settings.RasterizeFirstBounce = false;
     Renderer.Settings.EnableGroundPlane = true;
     Renderer.Settings.MaxBounceCount = 2;
     Renderer.Settings.L = {0.5f, 0.4f, -0.5f};
@@ -416,8 +416,8 @@ InitDXRenderer(HWND Window, camera *Camera, int Width, int Height)
     SetPersistentStates(&Renderer, ClientWidth, ClientHeight);
     
     ImGui::CreateContext();
-    ImGui_ImplDX11_Init(Device, DeviceContext);
     ImGui::GetIO().RenderDrawListsFn = ImGui_ImplDX11_RenderDrawData;
+    ImGui_ImplDX11_Init(Device, DeviceContext);
     
     Renderer.BufferIndex = 0;
     Renderer.LastBufferIndex = 1;

@@ -263,7 +263,7 @@ contact_info ReadGBuffer(float2 TexCoord)
     Res.Albedo = AlbedoTex.Sample(NearestSampler, TexCoord).rgb;
     Res.N = NormalTex.Sample(NearestSampler, TexCoord).xyz;
     float3 HitP = PositionTex.Sample(NearestSampler, TexCoord).xyz;
-    HitP += (0.01 + T_MIN) * Res.N;
+    HitP += (0.001 + T_MIN) * Res.N;
     
     if (Res.N.x != 0.0 || Res.N.y != 0.0 || Res.N.z != 0)
     {

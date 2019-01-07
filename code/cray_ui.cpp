@@ -98,6 +98,7 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
         }
     }
     
+#if CRAY_MALLOC
     if (ImGui::CollapsingHeader("Inspect allocations"))
     {
         value_with_unit PeekMemUsage = CalcProperMemoryUnit(GlobalTempArena.PeekUsed);
@@ -148,6 +149,7 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
             EnableAllocProfiling();
         }
     }
+#endif
     
     if (ImGui::CollapsingHeader("Settings"))
     {

@@ -234,7 +234,7 @@ struct pixel
 static float2 GlobalSeed;
 
 float2 Rand2() {
-    GlobalSeed += float2(-1,1);
+    GlobalSeed += float2(-0.1,0.1);
 	// implementation based on: lumina.sourceforge.net/Tutorials/Noise.html
     return float2(frac(sin(dot(GlobalSeed.xy ,float2(12.9898,78.233))) * 43758.5453),
                   frac(cos(dot(GlobalSeed.xy ,float2(4.898,7.23))) * 23421.631));

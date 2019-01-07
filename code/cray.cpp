@@ -17,10 +17,13 @@
        . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
 -   hunt down the last memory leaks
 -   optimize hash table for large data storage
+-   the hash table itself is vulnerable to memory leaks, use arena for hash table?
  . Optimize shadow rays: don't return nearest t, instead only a boolean result is needed.
 . Better BVH subdivision termination rule
 . faster BVH traversal (stackless)
 . implement SBVH
+. import more test models: http://graphics.stanford.edu/data/3Dscanrep/
+. fix biased convergence
 . compressed BVH storage on GPU
 . faster ray vs triangle tests (woop test)
  . Lower memory footprint

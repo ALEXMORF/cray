@@ -14,7 +14,7 @@ struct alloc_entry
 
 global_variable u64 GlobalMemoryUsage;
 global_variable u64 GlobalPeekMemoryUsage;
-global_variable alloc_entry GlobalAllocTable[100000];
+global_variable alloc_entry GlobalAllocTable[1000];
 global_variable b32 GlobalDisableAllocProfiling;
 
 internal void
@@ -32,7 +32,7 @@ DisableAllocProfiling()
 internal u64
 Hash(void *Pointer)
 {
-    return ((u64)Pointer + 1) * 387198793;
+    return ((u64)Pointer / 16) * 387198793;
 }
 
 internal alloc_entry
@@ -149,6 +149,8 @@ void *DebugRealloc(void *OldPointer, size_t NewSize, char *File, int Line, char 
     return NewPointer;
 }
 
+#if CRAY_MALLOC
 #define malloc(Size) DebugMalloc(Size, __FILE__, __LINE__, __func__)
 #define realloc(Pointer, NewSize) DebugRealloc(Pointer, NewSize, __FILE__, __LINE__, __func__)
 #define free(Pointer) DebugFree(Pointer)
+#endif

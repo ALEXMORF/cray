@@ -1,10 +1,22 @@
+internal memory_block *
+InitMemoryBlock(size_t BlockSize)
+{
+    memory_block *Block = (memory_block *)calloc(1, sizeof(memory_block));
+    
+    Block->Size = BlockSize;
+    Block->Base = (u8 *)malloc(Block->Size);
+    
+    return Block;
+}
+
 internal memory_arena
-InitMemoryArena(size_t Size)
+InitMemoryArena(size_t BlockSize)
 {
     memory_arena Arena = {};
     
-    Arena.Base = (u8 *)malloc(Size);
-    Arena.Size = Size;
+    Arena.BlockSize = BlockSize;
+    Arena.Head = InitMemoryBlock(BlockSize);
+    Arena.Current = Arena.Head;
     
     return Arena;
 }
@@ -12,31 +24,28 @@ InitMemoryArena(size_t Size)
 internal void
 Clear(memory_arena *Arena)
 {
-    Arena->Used = 0;
+    memory_block *Curr = Arena->Head->Next;
+    
+    while (Curr)
+    {
+        memory_block *Next = Curr->Next;
+        free(Curr->Base);
+        free(Curr);
+        Curr = Next;
+    }
+    
+    Arena->Current = Arena->Head;
+    Arena->Head->Used = 0;
+    Arena->Head->Next = 0;
 }
 
-internal void
-SaveOffset(memory_arena *Arena)
+internal u8 *
+PushBytes(memory_block *Block, size_t ByteCount)
 {
-    Arena->SavedOffset = Arena->Used;
-}
-
-internal void
-RewindToSavedOffset(memory_arena *Arena)
-{
-    Arena->Used = Arena->SavedOffset;
-}
-
-internal void
-SaveTempArenaOffset()
-{
-    SaveOffset(&GlobalTempArena);
-}
-
-internal void
-RewindTempArenaToSavedOffset()
-{
-    RewindToSavedOffset(&GlobalTempArena);
+    ASSERT(Block->Size - Block->Used >= ByteCount);
+    u8 *Mem = Block->Base + Block->Used;
+    Block->Used += ByteCount;
+    return Mem;
 }
 
 #define PushStruct(Arena, Type) (Type *)PushBytes(Arena, sizeof(Type))
@@ -46,18 +55,19 @@ RewindTempArenaToSavedOffset()
 internal u8 *
 PushBytes(memory_arena *Arena, size_t ByteCount)
 {
-    while ((Arena->Size - Arena->Used) < ByteCount)
+    ASSERT(ByteCount <= Arena->BlockSize);
+    
+    if (Arena->Current->Size - Arena->Current->Used >= ByteCount)
     {
-        Panic("can't grow memory rn!");
-        size_t NewSize = Arena->Size * 2 + 1;
-        Arena->Base = (u8 *)realloc(Arena->Base, NewSize * sizeof(u8));
-        Arena->Size = NewSize;
+        return PushBytes(Arena->Current, ByteCount);
     }
-    
-    u8 *MemPoint = Arena->Base + Arena->Used;
-    Arena->Used += ByteCount;
-    ASSERT(Arena->Used <= Arena->Size);
-    
-    return MemPoint;
+    else
+    {
+        memory_block *NewBlock = InitMemoryBlock(Arena->BlockSize);
+        NewBlock->Prev = Arena->Current;
+        Arena->Current->Next = NewBlock;
+        Arena->Current = NewBlock;
+        
+        return PushBytes(NewBlock, ByteCount);
+    }
 }
-

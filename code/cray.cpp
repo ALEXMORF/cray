@@ -14,11 +14,7 @@
 
 /*TODO(chen):
 
-       . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
--   BVH construction fails when growing arena relocates entire memory
--       make dynamic arena to use a linked list to maintain stability of memory addresses
--   the hash table itself is vulnerable to memory leaks, use arena for hash table?
- . Optimize shadow rays: don't return nearest t, instead only a boolean result is needed.
+        . Optimize shadow rays: don't return nearest t, instead only a boolean result is needed.
 . Better BVH subdivision termination rule
 . faster BVH traversal (stackless)
 . implement SBVH
@@ -69,7 +65,7 @@ RunCRay(cray *CRay, input *Input, f32 dT, HWND Window,
     {
         __PanicStr = PlatformPanic;
         
-        GlobalTempArena = InitMemoryArena(MB(0));
+        GlobalTempArena = InitMemoryArena(MB(2));
         CRay->Camera = InitCamera();
         CRay->Renderer = InitDXRenderer(Window, &CRay->Camera, Width, Height);
         CRay->Model = LoadModel(GlobalPrefabs[0]);

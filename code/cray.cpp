@@ -5,6 +5,7 @@
 #include <imgui_widgets.cpp>
 
 #include "cray_memory.cpp"
+#include "cray_file.cpp"
 #include "cray_obj.cpp"
 #include "cray_bvh.cpp"
 #include "cray_load_model.cpp"
@@ -17,6 +18,8 @@
         . Better BVH subdivision termination rule
 . faster BVH traversal (stackless)
 . implement SBVH
+. solve the "string too long" problem, can't bake shader into exe
+-    currently leaking memory to read shader code, fix that
 . import more test models: http://graphics.stanford.edu/data/3Dscanrep/
 . fix biased convergence
 . compressed BVH storage on GPU

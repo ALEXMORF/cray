@@ -125,14 +125,7 @@ WinMain(HINSTANCE CurrentInstance,
                                     "CRay", "CRay WndClass", 
                                     Win32WindowCallback);
     
-    app_memory AppMemory = {};
-    AppMemory.Size = MB(4);
-    AppMemory.Data = Win32AllocateMemory(AppMemory.Size);
-    
-    if (!AppMemory.Data)
-    {
-        Win32Panic("Failed to allocate required amount of memory");
-    }
+    cray CRay = {};
     
     u64 LastCounter = Win32GetPerformanceCounter();
     GlobalAppIsRunning = true;
@@ -186,8 +179,8 @@ WinMain(HINSTANCE CurrentInstance,
         f32 ElapsedTimeInMS = Win32GetTimeElapsedInMS(LastCounter, Win32GetPerformanceCounter());
         f32 dT = ElapsedTimeInMS / 1000.0f;
         LastCounter = Win32GetPerformanceCounter();
-        RunCRay(&AppMemory, &GlobalInput, dT, 
-                Window, GlobalWindowWidth, GlobalWindowHeight, 
+        RunCRay(&CRay, &GlobalInput, dT, Window, 
+                GlobalWindowWidth, GlobalWindowHeight, 
                 Win32Panic);
         
         Sleep(2);

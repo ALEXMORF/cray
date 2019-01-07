@@ -33,11 +33,11 @@ struct input
 
 struct cray
 {
-    memory_arena MainArena;
     dx_renderer Renderer;
     loaded_model Model;
     camera Camera;
     
     b32 ShowUI;
     float T;
+    b32 IsInitialized;
 };

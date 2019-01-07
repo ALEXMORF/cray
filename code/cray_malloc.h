@@ -12,9 +12,10 @@ struct alloc_entry
     alloc_entry *Next;
 };
 
+global_variable u64 GlobalAllocCallCount;
 global_variable u64 GlobalMemoryUsage;
 global_variable u64 GlobalPeekMemoryUsage;
-global_variable alloc_entry GlobalAllocTable[1000];
+global_variable alloc_entry GlobalAllocTable[100000];
 global_variable b32 GlobalDisableAllocProfiling;
 
 internal void
@@ -55,6 +56,7 @@ StoreAlloc(void *Pointer, u64 AllocSize, char *File, int Line, char *Func)
     if (GlobalDisableAllocProfiling) return;
     if (!Pointer) return;
     
+    GlobalAllocCallCount += 1;
     GlobalMemoryUsage += AllocSize;
     if (GlobalMemoryUsage > GlobalPeekMemoryUsage)
     {
@@ -135,6 +137,13 @@ void *DebugMalloc(size_t Size, char *File, int Line, char *Func)
     return Ptr;
 }
 
+void *DebugCalloc(size_t Count, size_t Size, char *File, int Line, char *Func)
+{
+    void *Ptr = calloc(Count, Size);
+    StoreAlloc(Ptr, Count * Size, File, Line, Func);
+    return Ptr;
+}
+
 void DebugFree(void *Pointer)
 {
     RemoveAlloc(Pointer);
@@ -151,6 +160,7 @@ void *DebugRealloc(void *OldPointer, size_t NewSize, char *File, int Line, char 
 
 #if CRAY_MALLOC
 #define malloc(Size) DebugMalloc(Size, __FILE__, __LINE__, __func__)
+#define calloc(Count, Size) DebugCalloc(Count, Size, __FILE__, __LINE__, __func__)
 #define realloc(Pointer, NewSize) DebugRealloc(Pointer, NewSize, __FILE__, __LINE__, __func__)
 #define free(Pointer) DebugFree(Pointer)
 #endif

@@ -101,14 +101,11 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
 #if CRAY_MALLOC
     if (ImGui::CollapsingHeader("Inspect allocations"))
     {
-        value_with_unit PeekMemUsage = CalcProperMemoryUnit(GlobalTempArena.PeekUsed);
-        ImGui::Text("Peek TempMemory Usage: %.2f%s", PeekMemUsage.Count, PeekMemUsage.Unit);
-        value_with_unit MainArenaMemUsage = CalcProperMemoryUnit(CRay->MainArena.Used);
-        ImGui::Text("Main Arena Usage: %.2f%s", MainArenaMemUsage.Count, MainArenaMemUsage.Unit);
         value_with_unit DynamicMemUsage = CalcProperMemoryUnit(GlobalMemoryUsage);
         ImGui::Text("Dynamic Memory Usage: %.2f%s", DynamicMemUsage.Count, DynamicMemUsage.Unit);
         value_with_unit PeekDynamicMemUsage = CalcProperMemoryUnit(GlobalPeekMemoryUsage);
         ImGui::Text("Peek Dynamic Memory Usage: %.2f%s", PeekDynamicMemUsage.Count, PeekDynamicMemUsage.Unit);
+        ImGui::Text("Alloc Call Count: %llu", GlobalAllocCallCount);
         
         // allocation list
         ImGui::Separator();

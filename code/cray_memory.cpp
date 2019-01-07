@@ -1,9 +1,9 @@
 internal memory_arena
-InitMemoryArena(void *Memory, size_t Size)
+InitMemoryArena(size_t Size)
 {
     memory_arena Arena = {};
     
-    Arena.Base = (u8 *)Memory;
+    Arena.Base = (u8 *)malloc(Size);
     Arena.Size = Size;
     
     return Arena;
@@ -46,27 +46,18 @@ RewindTempArenaToSavedOffset()
 internal u8 *
 PushBytes(memory_arena *Arena, size_t ByteCount)
 {
-    size_t SizeLeft = Arena->Size - Arena->Used;
-    ASSERT(SizeLeft >= ByteCount);
+    while ((Arena->Size - Arena->Used) < ByteCount)
+    {
+        Panic("can't grow memory rn!");
+        size_t NewSize = Arena->Size * 2 + 1;
+        Arena->Base = (u8 *)realloc(Arena->Base, NewSize * sizeof(u8));
+        Arena->Size = NewSize;
+    }
     
     u8 *MemPoint = Arena->Base + Arena->Used;
     Arena->Used += ByteCount;
-    if (Arena->Used > Arena->PeekUsed)
-    {
-        Arena->PeekUsed = Arena->Used;
-    }
+    ASSERT(Arena->Used <= Arena->Size);
     
     return MemPoint;
-}
-
-internal memory_arena
-PushMemoryArena(memory_arena *ParentArena, size_t Size)
-{
-    memory_arena Arena = {};
-    
-    Arena.Base = PushArray(ParentArena, Size, u8);
-    Arena.Size = Size;
-    
-    return Arena;
 }
 

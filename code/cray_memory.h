@@ -6,7 +6,6 @@ struct memory_arena
     u64 Used;
     u64 Size;
     
-    u64 PeekUsed;
     u64 SavedOffset;
 }; 
 

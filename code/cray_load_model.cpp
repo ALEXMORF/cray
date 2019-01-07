@@ -55,7 +55,7 @@ LoadModel(char *ObjPath, mat4 XForm)
     //NOTE(chen): BVH modifies the triangle array, therefore 
     //            triangles' SSBO binding must happen after 
     //            BVH's construction
-    bvh_entry *BVH = ConstructLinearBVH(Triangles);
+    bvh_entry *BVH = ConstructBVH(Triangles);
     LoadedModel.BvhConstructionTime = CalcSecondsPassed(BeginClock);
     
     LoadedModel.Vertices = Vertices;

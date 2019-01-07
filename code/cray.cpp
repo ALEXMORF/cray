@@ -15,8 +15,8 @@
 /*TODO(chen):
 
        . Use stretchy buffer instead of pre-allocating, model size is unknown whereas game asset is known. 
--   hunt down the last memory leaks
--   optimize hash table for large data storage
+-   BVH construction fails when growing arena relocates entire memory
+-       make dynamic arena to use a linked list to maintain stability of memory addresses
 -   the hash table itself is vulnerable to memory leaks, use arena for hash table?
  . Optimize shadow rays: don't return nearest t, instead only a boolean result is needed.
 . Better BVH subdivision termination rule
@@ -62,29 +62,21 @@
 */
 
 internal void
-RunCRay(app_memory *Memory, input *Input, f32 dT, 
-        HWND Window, int Width, int Height, panic *PlatformPanic)
+RunCRay(cray *CRay, input *Input, f32 dT, HWND Window, 
+        int Width, int Height, panic *PlatformPanic)
 {
-    ASSERT(sizeof(cray) <= Memory->Size);
-    cray *CRay = (cray *)Memory->Data;
-    
-    if (!Memory->IsInitialized)
+    if (!CRay->IsInitialized)
     {
         __PanicStr = PlatformPanic;
         
-        u8 *RestOfMemory = (u8 *)Memory->Data + sizeof(cray);
-        u64 RestOfMemorySize = Memory->Size - sizeof(cray);
-        CRay->MainArena = InitMemoryArena(RestOfMemory, RestOfMemorySize);
-        GlobalTempArena = PushMemoryArena(&CRay->MainArena, MB(0));
-        
+        GlobalTempArena = InitMemoryArena(MB(0));
         CRay->Camera = InitCamera();
         CRay->Renderer = InitDXRenderer(Window, &CRay->Camera, Width, Height);
         CRay->Model = LoadModel(GlobalPrefabs[0]);
         UploadModelToRenderer(&CRay->Renderer, CRay->Model);
-        
         CRay->ShowUI = true;
         
-        Memory->IsInitialized = true;
+        CRay->IsInitialized = true;
     }
     Clear(&GlobalTempArena);
     CRay->T += dT;

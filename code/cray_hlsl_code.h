@@ -544,6 +544,140 @@ contact_info Raytrace(in float3 Ro, in float3 Rd)
     return Res;
 }
 
+bool Intersect(in float3 Ro, in float3 Rd)
+{
+    // plane
+    if (EnableGroundPlane)
+    {
+        float T = RayIntersectPlane(Ro, Rd, float3(0,1,0), 0.0);
+        if (T > T_MIN && T < T_MAX)
+        {
+            return true;
+        }
+    }
+    
+    int ToVisitOffset = 0;
+    int NodesToVisit[32];
+    int CurrIndex = 0;
+    
+#if TIMEOUT_TRIANGLE
+    int TriTestCount = 0;
+#endif
+    
+#if DEBUG_SHADER
+    uint BVHCount = 0;
+    uint BVHStride = 0;
+    BVH.GetDimensions(BVHCount, BVHStride);
+    uint TriangleCount = 0;
+    uint TriangleStride = 0;
+    Triangles.GetDimensions(TriangleCount, TriangleStride);
+    
+    if (BVHCount == 0)
+    {
+        return Res;
+    }
+#endif
+    
+#if TIMEOUT_TRAVERSAL
+    for (int TraverseIndex = 0; TraverseIndex < TRAVERSE_LIMIT; ++TraverseIndex)
+#else
+        while (true)
+#endif
+    {
+        
+#if DEBUG_SHADER
+        if (CurrIndex >= BVHCount)
+        {
+            discard;
+        }
+#endif
+        
+#if TIMEOUT_TRIANGLE
+        if (TriTestCount < 0 || TriTestCount > TRIANGLE_LIMIT)
+        {
+            return Res;
+        }
+#endif
+        float BoundT = RayIntersectBound(Ro, Rd, BVH.Load(CurrIndex).Bound);
+        if (BoundT != T_MAX)
+        {
+            if (BVH.Load(CurrIndex).PrimitiveCount == -1)
+            {
+                if (Rd[BVH.Load(CurrIndex).Axis] >= 0.0)
+                {
+                    NodesToVisit[ToVisitOffset++] = BVH.Load(CurrIndex).Offset;
+                    CurrIndex = CurrIndex + 1;
+                }
+                else
+                {
+                    NodesToVisit[ToVisitOffset++] = CurrIndex + 1;
+                    CurrIndex = BVH.Load(CurrIndex).Offset;
+                }
+                
+#if DEBUG_SHADER
+                if (ToVisitOffset <= 0 || ToVisitOffset >= 32)
+                {
+                    discard;
+                }
+#endif
+            }
+            else
+            {
+                int StartOffset = BVH.Load(CurrIndex).Offset;
+                int EndOffset = (StartOffset + 
+                                 BVH.Load(CurrIndex).PrimitiveCount);
+                
+#if TIMEOUT_TRIANGLE
+                TriTestCount += BVH.Load(CurrIndex).PrimitiveCount;
+#endif
+                
+                for (int TriIndex = StartOffset; 
+                     TriIndex < EndOffset; 
+                     ++TriIndex)
+                {
+#if DEBUG_SHADER
+                    if (TriIndex < 0 || TriIndex > TriangleCount)
+                    {
+                        discard;
+                    }
+#endif
+                    
+                    float T = RayIntersectTriangle(Ro, Rd, 
+                                                   Triangles.Load(TriIndex).A,
+                                                   Triangles.Load(TriIndex).B,
+                                                   Triangles.Load(TriIndex).C);
+                    if (T > T_MIN && T < T_MAX)
+                    {
+                        return true;
+                    }
+                }
+                
+#if DEBUG_SHADER
+                if (ToVisitOffset < 0 || ToVisitOffset > 32)
+                {
+                    discard;
+                }
+#endif
+                if (ToVisitOffset == 0) break;
+                CurrIndex = NodesToVisit[--ToVisitOffset];
+            }
+        }
+        else
+        {
+#if DEBUG_SHADER
+            if (ToVisitOffset < 0 || ToVisitOffset > 32)
+            {
+                discard;
+            }
+#endif
+            if (ToVisitOffset == 0) break;
+            CurrIndex = NodesToVisit[--ToVisitOffset];
+        }
+    }
+    
+    return false;
+}
+
 float3 Ortho(in float3 X)
 {
     float3 Res;
@@ -601,7 +735,7 @@ float3 SampleDirectLight(in float3 Ro, in float3 N, in float3 L)
     float SunLightRatio = dot(LSample, N);
     if (SunLightRatio > 0.0)
     {
-        if (Raytrace(Ro, LSample).T == T_MAX)
+        if (!Intersect(Ro, LSample))
         {
             Radiance = SunLightRatio*SunRadiance;
         }

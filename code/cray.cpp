@@ -14,8 +14,7 @@
 
 /*TODO(chen):
 
-        . Optimize shadow rays: don't return nearest t, instead only a boolean result is needed.
-. Better BVH subdivision termination rule
+        . Better BVH subdivision termination rule
 . faster BVH traversal (stackless)
 . implement SBVH
 . import more test models: http://graphics.stanford.edu/data/3Dscanrep/

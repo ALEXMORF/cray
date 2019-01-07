@@ -1,5 +1,5 @@
 #include <imgui_impl_dx11.cpp>
-#include "cray_hlsl_code.h"
+//#include "cray_hlsl_code.h"
 
 internal ID3DBlob *
 CompileDXShaderFromFile(LPCWSTR Path, char *EntryPoint, char *Target, UINT Flags)
@@ -241,6 +241,8 @@ SetPersistentStates(dx_renderer *Renderer, int Width, int Height)
 internal dx_renderer
 InitDXRenderer(HWND Window, camera *Camera, int Width, int Height)
 {
+    
+    
     dx_renderer Renderer = {};
     Renderer.Width = Width;
     Renderer.Height = Height;
@@ -332,6 +334,11 @@ InitDXRenderer(HWND Window, camera *Camera, int Width, int Height)
 #else
     UINT CompilerFlags = D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #endif
+    
+    char *gpass = ReadFile("../code/gpass.hlsl");
+    char *fullscreen = ReadFile("../code/fullscreen.hlsl");
+    char *sample = ReadFile("../code/sample.hlsl");
+    char *output = ReadFile("../code/output.hlsl");
     
     // create GPass shaders and its input layout
     {

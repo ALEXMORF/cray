@@ -15,9 +15,9 @@
 
 /*TODO(chen):
 
-        . Better BVH subdivision termination rule
 . faster BVH traversal (stackless)
 . implement SBVH
+. use a high quality sampling sequence for seeding
 . solve the "string too long" problem, can't bake shader into exe
 -    currently leaking memory to read shader code, fix that
 . import more test models: http://graphics.stanford.edu/data/3Dscanrep/

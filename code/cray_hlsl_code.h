@@ -234,7 +234,7 @@ struct pixel
 static float2 GlobalSeed;
 
 float2 Rand2() {
-    GlobalSeed += float2(-0.1,0.1);
+    //GlobalSeed += float2(-0.1,0.1);
 	// implementation based on: lumina.sourceforge.net/Tutorials/Noise.html
     return float2(frac(sin(dot(GlobalSeed.xy ,float2(12.9898,78.233))) * 43758.5453),
                   frac(cos(dot(GlobalSeed.xy ,float2(4.898,7.23))) * 23421.631));
@@ -745,7 +745,9 @@ float3 SampleDirectLight(in float3 Ro, in float3 N, in float3 L)
 
 float4 main(pixel Pixel): SV_TARGET
 {
-    GlobalSeed = Pixel.P*(Time+1.0);
+    //GlobalSeed = Pixel.P*(Time+1.0);
+    float2 Variant = float2(1.0, 1.0);
+    GlobalSeed = Variant * (Time+1.0);
     
     float3 AvgRadiance = float3(0, 0, 0);
     

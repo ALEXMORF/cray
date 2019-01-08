@@ -69,7 +69,7 @@ Union(bound A, v3 P)
 internal f32
 ChooseBestCutSAH(primitive *Prims, int StartIndex, int Count, 
                  axis Axis, f32 MinCentroid, f32 MaxCentroid, 
-                 bound TotalBound)
+                 bound TotalBound, f32 *MinCost_Out)
 {
     bucket Buckets[12] = {};
     int BucketCount = ARRAY_COUNT(Buckets);
@@ -126,6 +126,7 @@ ChooseBestCutSAH(primitive *Prims, int StartIndex, int Count,
     }
     ASSERT(Cut != -1.0f);
     
+    *MinCost_Out = MinCost;
     return Cut;
 }
 
@@ -190,14 +191,22 @@ ConstructBVHTree(primitive *Prims, int StartIndex, int Count)
     
     if (Count > 5 && MaxRange > 0.001f && CalcSurfaceArea(TotalBound) != 0.0f)
     {
+        f32 MinCost;
         f32 Cut = ChooseBestCutSAH(Prims, StartIndex, Count, 
                                    PartitionAxis, 
                                    CentroidBound.Min.Data[PartitionAxis],
                                    CentroidBound.Max.Data[PartitionAxis],
-                                   TotalBound);
+                                   TotalBound, &MinCost);
         
         int LeftCount = Partition(Prims+StartIndex, Count, Cut, PartitionAxis);
         int RightCount = Count - LeftCount;
+        
+        if (LeftCount == 0 || RightCount == 0)
+        {
+            Node->PrimitiveOffset = StartIndex;
+            Node->PrimitiveCount = Count;
+            return Node;
+        }
         
         Node->PrimitiveCount = -1;
         Node->PartitionAxis = PartitionAxis;

@@ -466,7 +466,7 @@ hit_info Raytrace(in float3 Ro, in float3 Rd)
                     }
                 }
                 
-                if (ToVisitOffset <= 0) break;
+                if (ToVisitOffset <= 0)  break;
                 CurrIndex = NodesToVisit[--ToVisitOffset];
             }
         }
@@ -693,6 +693,7 @@ float4 main(pixel Pixel): SV_TARGET
             
             Radiance += Attenuation*Emission;
             Attenuation *= Albedo;
+            Attenuation /= Pi; //lambertian
             CurrRo = CurrRo + (Hit.T - T_MIN) * CurrRd;
             
             Radiance += Attenuation * SampleDirectLight(CurrRo, N, L);

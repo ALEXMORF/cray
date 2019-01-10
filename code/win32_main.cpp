@@ -6,7 +6,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <windowsx.h>
-#include <ShellScalingAPI.h>
 #include "win32_kernel.h"
 
 global_variable b32 GlobalAppIsRunning;
@@ -45,6 +44,22 @@ Win32Panic(char *Message)
     exit(1);
 }
 
+typedef void set_dpi_awarenss(DPI_AWARENESS_CONTEXT Context);
+internal void
+Win32SetDPIAwareness()
+{
+    HMODULE SHCoreLibrary = LoadLibraryA("Shcore.lib");
+    if (SHCoreLibrary)
+    {
+        set_dpi_awarenss *SetDpiAwareness = (set_dpi_awarenss *)GetProcAddress(SHCoreLibrary, "SetProcessDpiAwarenessContext");
+        if (SetDpiAwareness)
+        {
+            SetDpiAwareness(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+        }
+        
+        FreeLibrary(SHCoreLibrary);
+    }
+}
 
 internal void
 Win32TrackMouse(HWND Window)
@@ -116,7 +131,7 @@ WinMain(HINSTANCE CurrentInstance,
         LPSTR CommandLine,
         int ShowCode)
 {
-    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+    Win32SetDPIAwareness();
     
     GlobalWindowWidth = 1280;
     GlobalWindowHeight = 720;

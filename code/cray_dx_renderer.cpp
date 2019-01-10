@@ -232,7 +232,7 @@ SetPersistentStates(dx_renderer *Renderer, int Width, int Height)
     DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     DeviceContext->VSSetShader(Renderer->FullscreenVS, 0, 0);
     
-    DeviceContext->PSSetSamplers(0, 1, &Renderer->NearestSampler);
+    DeviceContext->PSSetSamplers(0, 1, &Renderer->PointSampler);
     
     SetViewport(Renderer, Width, Height);
     DeviceContext->RSSetState(Renderer->RasterizerState);
@@ -376,18 +376,18 @@ InitDXRenderer(HWND Window, camera *Camera, int Width, int Height)
     Renderer.SamplePS = CreateDXPS(Device, "sample.hlsl", sample, "main", CompilerFlags);
     Renderer.OutputPS = CreateDXPS(Device, "output.hlsl", output, "main", CompilerFlags);
     
-    D3D11_SAMPLER_DESC NearestSamplerDesc = {};
-    NearestSamplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
-    NearestSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
-    NearestSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
-    NearestSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
-    NearestSamplerDesc.MipLODBias = 0;
-    NearestSamplerDesc.MaxAnisotropy = 1;
-    NearestSamplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-    NearestSamplerDesc.MinLOD = 0.0f;
-    NearestSamplerDesc.MaxLOD = 0.0f;
-    HRESULT CreatedNearestSampler = Device->CreateSamplerState(&NearestSamplerDesc, &Renderer.NearestSampler);
-    ASSERT(SUCCEEDED(CreatedNearestSampler));
+    D3D11_SAMPLER_DESC PointSamplerDesc = {};
+    PointSamplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    PointSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    PointSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    PointSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    PointSamplerDesc.MipLODBias = 0;
+    PointSamplerDesc.MaxAnisotropy = 1;
+    PointSamplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+    PointSamplerDesc.MinLOD = 0.0f;
+    PointSamplerDesc.MaxLOD = 0.0f;
+    HRESULT CreatedPointSampler = Device->CreateSamplerState(&PointSamplerDesc, &Renderer.PointSampler);
+    ASSERT(SUCCEEDED(CreatedPointSampler));
     
     D3D11_RASTERIZER_DESC1 RasterizerStateDesc = {};
     RasterizerStateDesc.FillMode = D3D11_FILL_SOLID;
@@ -407,9 +407,9 @@ InitDXRenderer(HWND Window, camera *Camera, int Width, int Height)
     Renderer.Settings.EnableGroundPlane = true;
     Renderer.Settings.MaxBounceCount = 2;
     Renderer.Settings.L = {0.5f, 0.4f, -0.5f};
-    Renderer.Settings.SunRadiance = V3(4.0f);
-    Renderer.Settings.Zenith = {0.0f, 0.44f, 2.66f};
-    Renderer.Settings.Azimuth = {1.0f, 1.4f, 1.6f};
+    Renderer.Settings.SunRadiance = V3(12.0f);
+    Renderer.Settings.Zenith = 2.0f * V3(0.0f, 0.44f, 2.66f);
+    Renderer.Settings.Azimuth = 2.0f * V3(1.0f, 1.4f, 1.6f);
     Renderer.Camera.P = Camera->P;
     Renderer.Camera.LookAt = Camera->LookAt;
     Renderer.Context.AspectRatio = (f32)ClientWidth / (f32)ClientHeight;

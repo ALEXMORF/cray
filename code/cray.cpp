@@ -15,16 +15,17 @@
 
 /*TODO(chen):
 
-. code review
-. faster BVH traversal (stackless)
+. late-binding dpi awareness for win7 compatible
+. general code review
+. faster BVH traversal (while-while and stackless)
 . simple denoise (cross bilateral blur)
 . implement SBVH
-. try hybrid-coherent tracing
+. faster ray vs triangle tests (woop test)
+. use a high quality sampling sequence
 . solve the "string too long" problem, can't bake shader into exe
 -    currently leaking memory to read shader code, fix that
 . import more test models: http://graphics.stanford.edu/data/3Dscanrep/
 . compressed BVH storage on GPU
-. faster ray vs triangle tests (woop test)
  . Lower memory footprint
 -    compressed 3D mesh storage
 -    a serious material system
@@ -32,7 +33,6 @@
 -    support pbrt scenes
 -    support PBR material from pbrt scenes
 -    textures
-. use a high quality sampling sequence
 . fix biased convergence
 . better camera model
 . more physically based light transport model

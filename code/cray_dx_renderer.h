@@ -121,7 +121,7 @@ struct dx_renderer
     ID3D11PixelShader *SamplePS;
     ID3D11PixelShader *OutputPS;
     
-    ID3D11SamplerState *NearestSampler;
+    ID3D11SamplerState *PointSampler;
     
     ID3D11RasterizerState1 *RasterizerState;
     

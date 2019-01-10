@@ -241,8 +241,6 @@ SetPersistentStates(dx_renderer *Renderer, int Width, int Height)
 internal dx_renderer
 InitDXRenderer(HWND Window, camera *Camera, int Width, int Height)
 {
-    
-    
     dx_renderer Renderer = {};
     Renderer.Width = Width;
     Renderer.Height = Height;
@@ -584,6 +582,7 @@ NeedsRefresh(render_settings Old, render_settings New)
     Result = Result || Old.RasterizeFirstBounce != New.RasterizeFirstBounce;
     Result = Result || Old.MaxBounceCount != New.MaxBounceCount;
     Result = Result || Old.EnableGroundPlane != New.EnableGroundPlane;
+    Result = Result || Old.DoCoherentSample != New.DoCoherentSample;
     Result = Result || Old.L != New.L;
     Result = Result || Old.SunRadiance != New.SunRadiance;
     Result = Result || Old.Zenith != New.Zenith;
@@ -654,6 +653,8 @@ Render(dx_renderer *Renderer, camera *Camera, f32 T)
     
     context_data *Context = &Renderer->Context;
     Context->Time = T;
+    Context->RandSeed.X = (f32)rand() / RAND_MAX;
+    Context->RandSeed.Y = (f32)rand() / RAND_MAX;
     Context->View = Transpose(Mat4LookAt(Camera->P, Camera->LookAt));
     Context->Projection = Transpose(Mat4PerspectiveDX(Renderer->Settings.FOV, Context->AspectRatio, 0.1f, 1000.0f));
     
@@ -714,14 +715,6 @@ Render(dx_renderer *Renderer, camera *Camera, f32 T)
     
     DeviceContext->IASetInputLayout(0);
     DeviceContext->VSSetShader(Renderer->FullscreenVS, 0, 0);
-    
-#if 0
-    ID3D11ShaderResourceView *ResourceViews[] = {
-        Renderer->TriangleBufferView,
-        Renderer->BVHBufferView,
-    };
-    DeviceContext->PSSetShaderResources(0, ARRAY_COUNT(ResourceViews), ResourceViews);
-#endif
     
     DeviceContext->PSSetShaderResources(2, 1, &Renderer->SamplerBuffers[LastBufferIndex].SRV);
     DeviceContext->PSSetShader(Renderer->SamplePS, 0, 0);

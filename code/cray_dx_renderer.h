@@ -19,9 +19,7 @@ struct packed_triangle
     v3 Emission;
     u32 Pad6;
 };
-#pragma pack(pop)
 
-#pragma pack(push, 1)
 struct packed_bvh_entry
 {
     //NOTE(chen): bound
@@ -39,7 +37,6 @@ struct packed_bvh_entry
     i32 Axis;
     u32 Pad3;
 };
-#pragma pack(pop)
 
 struct render_settings
 {
@@ -48,8 +45,11 @@ struct render_settings
     b32 RasterizeFirstBounce;
     i32 MaxBounceCount;
     b32 EnableGroundPlane;
+    b32 DoCoherentSample;
+    u32 Pad[2];
     
     v3 L;
+    u32 Pad0;
     v3 SunRadiance;
     u32 Pad1;
     v3 Zenith;
@@ -71,11 +71,15 @@ struct context_data
     f32 Time;
     i32 SampleCountSoFar;
     f32 AspectRatio;
-    u32 Pad;
+    u32 Pad1;
+    v2 RandSeed;
+    u32 Pad2[2];
     
     mat4 View;
     mat4 Projection;
 };
+
+#pragma pack(pop)
 
 struct dx_render_target
 {

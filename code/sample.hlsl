@@ -1,4 +1,3 @@
-#define DEBUG_SHADER 0
 #define TIMEOUT_TRIANGLE 0
 #define TRIANGLE_LIMIT 10
 //NOTE(chen): I'm timing out my BVH traversal manually due to a driver bug I'm hitting, 
@@ -40,6 +39,7 @@ cbuffer Settings: register(b0)
     bool RasterizeFirstBounce;
     int MaxBounceCount;
     bool EnableGroundPlane;
+    bool DoCoherentSample;
     
     float3 NotNormalizedL;
     float3 SunRadiance;
@@ -59,6 +59,7 @@ cbuffer Context: register(b2)
     int SampleCountSoFar;
     float AspectRatio;
     uint Pad;
+    float2 RandSeed;
     
     float4x4 View;
     float4x4 Projection;
@@ -94,8 +95,8 @@ struct pixel
 static float2 GlobalSeed;
 
 float2 Rand2() {
-    //GlobalSeed += float2(-0.1,0.1);
-	// implementation based on: lumina.sourceforge.net/Tutorials/Noise.html
+    GlobalSeed += float2(-0.1,0.1);
+    // implementation based on: lumina.sourceforge.net/Tutorials/Noise.html
     return float2(frac(sin(dot(GlobalSeed.xy ,float2(12.9898,78.233))) * 43758.5453),
                   frac(cos(dot(GlobalSeed.xy ,float2(4.898,7.23))) * 23421.631));
 }
@@ -105,6 +106,12 @@ struct sphere
     float Radius;
     float3 P;
     float3 Albedo;
+};
+
+struct hit_info
+{
+    float T;
+    int TriIndex;
 };
 
 struct contact_info
@@ -125,7 +132,7 @@ contact_info ReadGBuffer(float2 TexCoord)
     float3 HitP = PositionTex.Sample(NearestSampler, TexCoord).xyz;
     HitP += (0.001 + T_MIN) * Res.N;
     
-    if (Res.N.x != 0.0 || Res.N.y != 0.0 || Res.N.z != 0)
+    if (dot(Res.N, Res.N) != 0.0)
     {
         Res.T = length(HitP - CamP);
     }
@@ -286,20 +293,6 @@ contact_info Raytrace(in float3 Ro, in float3 Rd)
     int TriTestCount = 0;
 #endif
     
-#if DEBUG_SHADER
-    uint BVHCount = 0;
-    uint BVHStride = 0;
-    BVH.GetDimensions(BVHCount, BVHStride);
-    uint TriangleCount = 0;
-    uint TriangleStride = 0;
-    Triangles.GetDimensions(TriangleCount, TriangleStride);
-    
-    if (BVHCount == 0)
-    {
-        return Res;
-    }
-#endif
-    
 #if TIMEOUT_TRAVERSAL
     for (int TraverseIndex = 0; TraverseIndex < TRAVERSE_LIMIT; ++TraverseIndex)
 #else
@@ -307,95 +300,64 @@ contact_info Raytrace(in float3 Ro, in float3 Rd)
 #endif
     {
         
-#if DEBUG_SHADER
-        if (CurrIndex >= BVHCount)
-        {
-            discard;
-        }
-#endif
-        
 #if TIMEOUT_TRIANGLE
         if (TriTestCount < 0 || TriTestCount > TRIANGLE_LIMIT)
         {
             return Res;
         }
 #endif
+        bvh_entry Node = BVH.Load(CurrIndex);
         
-        float BoundT = RayIntersectBound(Ro, Rd, BVH.Load(CurrIndex).Bound);
+        float BoundT = RayIntersectBound(Ro, Rd, Node.Bound);
         if (BoundT < Res.T && BoundT != T_MAX)
         {
-            if (BVH.Load(CurrIndex).PrimitiveCount == -1)
+            if (Node.PrimitiveCount == -1)
             {
-                if (Rd[BVH.Load(CurrIndex).Axis] >= 0.0)
+                if (Rd[Node.Axis] >= 0.0)
                 {
-                    NodesToVisit[ToVisitOffset++] = BVH.Load(CurrIndex).Offset;
+                    NodesToVisit[ToVisitOffset++] = Node.Offset;
                     CurrIndex = CurrIndex + 1;
                 }
                 else
                 {
                     NodesToVisit[ToVisitOffset++] = CurrIndex + 1;
-                    CurrIndex = BVH.Load(CurrIndex).Offset;
+                    CurrIndex = Node.Offset;
                 }
-                
-#if DEBUG_SHADER
-                if (ToVisitOffset <= 0 || ToVisitOffset >= 32)
-                {
-                    discard;
-                }
-#endif
             }
             else
             {
-                int StartOffset = BVH.Load(CurrIndex).Offset;
-                int EndOffset = (StartOffset + 
-                                 BVH.Load(CurrIndex).PrimitiveCount);
+                int StartOffset = Node.Offset;
+                int EndOffset = (StartOffset + Node.PrimitiveCount);
                 
 #if TIMEOUT_TRIANGLE
-                TriTestCount += BVH.Load(CurrIndex).PrimitiveCount;
+                TriTestCount += Node.PrimitiveCount;
 #endif
                 
                 for (int TriIndex = StartOffset; 
                      TriIndex < EndOffset; 
                      ++TriIndex)
                 {
-#if DEBUG_SHADER
-                    if (TriIndex < 0 || TriIndex > TriangleCount)
-                    {
-                        discard;
-                    }
-#endif
+                    _triangle Triangle = Triangles.Load(TriIndex);
                     
                     float T = RayIntersectTriangle(Ro, Rd, 
-                                                   Triangles.Load(TriIndex).A,
-                                                   Triangles.Load(TriIndex).B,
-                                                   Triangles.Load(TriIndex).C);
+                                                   Triangle.A,
+                                                   Triangle.B,
+                                                   Triangle.C);
                     if (T > T_MIN && T < Res.T)
                     {
                         Res.T = T;
-                        Res.Albedo = Triangles.Load(TriIndex).Albedo;
-                        Res.Emission = Triangles.Load(TriIndex).Emission;
-                        Res.N = Triangles.Load(TriIndex).N;
+                        Res.Albedo = Triangle.Albedo;
+                        Res.Emission = Triangle.Emission;
+                        Res.N = Triangle.N;
                     }
                 }
                 
-#if DEBUG_SHADER
-                if (ToVisitOffset < 0 || ToVisitOffset > 32)
-                {
-                    discard;
-                }
-#endif
                 if (ToVisitOffset == 0) break;
                 CurrIndex = NodesToVisit[--ToVisitOffset];
             }
         }
         else
         {
-#if DEBUG_SHADER
-            if (ToVisitOffset < 0 || ToVisitOffset > 32)
-            {
-                discard;
-            }
-#endif
             if (ToVisitOffset == 0) break;
             CurrIndex = NodesToVisit[--ToVisitOffset];
         }
@@ -424,112 +386,66 @@ bool Intersect(in float3 Ro, in float3 Rd)
     int TriTestCount = 0;
 #endif
     
-#if DEBUG_SHADER
-    uint BVHCount = 0;
-    uint BVHStride = 0;
-    BVH.GetDimensions(BVHCount, BVHStride);
-    uint TriangleCount = 0;
-    uint TriangleStride = 0;
-    Triangles.GetDimensions(TriangleCount, TriangleStride);
-    
-    if (BVHCount == 0)
-    {
-        return Res;
-    }
-#endif
-    
 #if TIMEOUT_TRAVERSAL
     for (int TraverseIndex = 0; TraverseIndex < TRAVERSE_LIMIT; ++TraverseIndex)
 #else
         while (true)
 #endif
     {
-        
-#if DEBUG_SHADER
-        if (CurrIndex >= BVHCount)
-        {
-            discard;
-        }
-#endif
-        
 #if TIMEOUT_TRIANGLE
         if (TriTestCount < 0 || TriTestCount > TRIANGLE_LIMIT)
         {
             return Res;
         }
 #endif
-        float BoundT = RayIntersectBound(Ro, Rd, BVH.Load(CurrIndex).Bound);
+        bvh_entry Node = BVH.Load(CurrIndex);
+        
+        float BoundT = RayIntersectBound(Ro, Rd, Node.Bound);
         if (BoundT != T_MAX)
         {
-            if (BVH.Load(CurrIndex).PrimitiveCount == -1)
+            if (Node.PrimitiveCount == -1)
             {
-                if (Rd[BVH.Load(CurrIndex).Axis] >= 0.0)
+                if (Rd[Node.Axis] >= 0.0)
                 {
-                    NodesToVisit[ToVisitOffset++] = BVH.Load(CurrIndex).Offset;
+                    NodesToVisit[ToVisitOffset++] = Node.Offset;
                     CurrIndex = CurrIndex + 1;
                 }
                 else
                 {
                     NodesToVisit[ToVisitOffset++] = CurrIndex + 1;
-                    CurrIndex = BVH.Load(CurrIndex).Offset;
+                    CurrIndex = Node.Offset;
                 }
-                
-#if DEBUG_SHADER
-                if (ToVisitOffset <= 0 || ToVisitOffset >= 32)
-                {
-                    discard;
-                }
-#endif
             }
             else
             {
-                int StartOffset = BVH.Load(CurrIndex).Offset;
-                int EndOffset = (StartOffset + 
-                                 BVH.Load(CurrIndex).PrimitiveCount);
+                int StartOffset = Node.Offset;
+                int EndOffset = (StartOffset + Node.PrimitiveCount);
                 
 #if TIMEOUT_TRIANGLE
-                TriTestCount += BVH.Load(CurrIndex).PrimitiveCount;
+                TriTestCount += Node.PrimitiveCount;
 #endif
                 
                 for (int TriIndex = StartOffset; 
                      TriIndex < EndOffset; 
                      ++TriIndex)
                 {
-#if DEBUG_SHADER
-                    if (TriIndex < 0 || TriIndex > TriangleCount)
-                    {
-                        discard;
-                    }
-#endif
-                    
+                    _triangle Triangle = Triangles.Load(TriIndex);
                     float T = RayIntersectTriangle(Ro, Rd, 
-                                                   Triangles.Load(TriIndex).A,
-                                                   Triangles.Load(TriIndex).B,
-                                                   Triangles.Load(TriIndex).C);
+                                                   Triangle.A,
+                                                   Triangle.B,
+                                                   Triangle.C);
                     if (T > T_MIN && T < T_MAX)
                     {
                         return true;
                     }
                 }
                 
-#if DEBUG_SHADER
-                if (ToVisitOffset < 0 || ToVisitOffset > 32)
-                {
-                    discard;
-                }
-#endif
                 if (ToVisitOffset == 0) break;
                 CurrIndex = NodesToVisit[--ToVisitOffset];
             }
         }
         else
         {
-#if DEBUG_SHADER
-            if (ToVisitOffset < 0 || ToVisitOffset > 32)
-            {
-                discard;
-            }
-#endif
             if (ToVisitOffset == 0) break;
             CurrIndex = NodesToVisit[--ToVisitOffset];
         }
@@ -605,9 +521,14 @@ float3 SampleDirectLight(in float3 Ro, in float3 N, in float3 L)
 
 float4 main(pixel Pixel): SV_TARGET
 {
-    //GlobalSeed = Pixel.P*(Time+1.0);
-    float2 Variant = float2(1.0, 1.0);
-    GlobalSeed = Variant * (Time+1.0);
+    if (!DoCoherentSample)
+    {
+        GlobalSeed = Pixel.P*(Time+1.0);
+    }
+    else
+    {
+        GlobalSeed = RandSeed;
+    }
     
     float3 AvgRadiance = float3(0, 0, 0);
     

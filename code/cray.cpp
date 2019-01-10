@@ -15,13 +15,15 @@
 
 /*TODO(chen):
 
+. reduce contact_info transfer traffic
+. code review
 . faster BVH traversal (stackless)
+. simple denoise (cross bilateral blur)
 . implement SBVH
-. use a high quality sampling sequence for seeding
+. try hybrid-coherent tracing
 . solve the "string too long" problem, can't bake shader into exe
 -    currently leaking memory to read shader code, fix that
 . import more test models: http://graphics.stanford.edu/data/3Dscanrep/
-. fix biased convergence
 . compressed BVH storage on GPU
 . faster ray vs triangle tests (woop test)
  . Lower memory footprint
@@ -31,7 +33,10 @@
 -    support pbrt scenes
 -    support PBR material from pbrt scenes
 -    textures
-. actual physically based rendering
+. use a high quality sampling sequence
+. fix biased convergence
+. better camera model
+. more physically based light transport model
 . Proper backwards-compatible DPI scaling
 . Handle text DPI-scaling correctly
 . Allow multiple models
@@ -49,7 +54,6 @@
 . environment map
 . imgui for loading/unloading scenes
 . dynamically manipulate objects
-. simple denoise
 . Filmic tonemapping
 . more advanced BRDF
 . Multisample progressive rendering
@@ -66,6 +70,7 @@ RunCRay(cray *CRay, input *Input, f32 dT, HWND Window,
     if (!CRay->IsInitialized)
     {
         __PanicStr = PlatformPanic;
+        srand((unsigned int)time(0));
         
         GlobalTempArena = InitMemoryArena(MB(2));
         CRay->Camera = InitCamera();

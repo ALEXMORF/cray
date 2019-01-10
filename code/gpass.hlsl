@@ -4,6 +4,7 @@ cbuffer Context: register(b2)
     int SampleCountSoFar;
     float AspectRatio;
     uint Pad;
+    float2 RandSeed;
     
     float4x4 View;
     float4x4 Projection;

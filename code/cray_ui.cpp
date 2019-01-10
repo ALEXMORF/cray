@@ -153,6 +153,7 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
         render_settings *Settings = &CRay->Renderer.Settings;
         ImGui::Checkbox("Rasterize First Bounce", (bool *)&Settings->RasterizeFirstBounce);
         ImGui::Checkbox("Enable Ground Plane", (bool *)&Settings->EnableGroundPlane);
+        ImGui::Checkbox("Do Coherent Sampling", (bool *)&Settings->DoCoherentSample);
         ImGui::InputInt("Max Bounce Count", &Settings->MaxBounceCount);
         ImGui::InputFloat("FOV", &Settings->FOV, 0.01f);
         ImGui::DragFloat3("L", (f32 *)&Settings->L, 0.01f);

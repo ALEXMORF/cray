@@ -5,6 +5,7 @@ cbuffer Settings: register(b0)
     bool RasterizeFirstBounce;
     int MaxBounceCount;
     bool EnableGroundPlane;
+    bool DoCoherentSample;
     
     float3 L;
     float3 SunRadiance;

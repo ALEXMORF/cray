@@ -1,10 +1,4 @@
-#define TIMEOUT_TRIANGLE 0
-#define TRIANGLE_LIMIT 10
-//NOTE(chen): I'm timing out my BVH traversal manually due to a driver bug I'm hitting, 
-//            where the traversal would carry on indefinitely whenever I resize buffers,
-//            try disable this and see for yourself if it's true for your platform
-#define TIMEOUT_TRAVERSAL 1
-#define TRAVERSE_LIMIT 10000
+#define PLANE_ID -2
 
 struct _triangle
 {
@@ -267,21 +261,20 @@ contact_info RaytraceGroundPlane(in float3 Ro, in float3 Rd)
     return Hit;
 }
 
-contact_info Raytrace(in float3 Ro, in float3 Rd)
+hit_info Raytrace(in float3 Ro, in float3 Rd)
 {
-    contact_info Res;
-    Res.T = T_MAX;
-    Res.Emission = float3(0, 0, 0);
+    hit_info Hit;
+    Hit.T = T_MAX;
+    Hit.TriIndex = -1;
     
     // plane
     if (EnableGroundPlane)
     {
-        contact_info Hit = RaytraceGroundPlane(Ro, Rd);
-        if (Hit.T > T_MIN && Hit.T < Res.T)
+        float T = RayIntersectPlane(Ro, Rd, float3(0,1,0), 0.0);
+        if (T > T_MIN && T < T_MAX)
         {
-            Res.T = Hit.T;
-            Res.Albedo = Hit.Albedo;
-            Res.N = Hit.N;
+            Hit.T = T;
+            Hit.TriIndex = -2;
         }
     }
     
@@ -289,27 +282,12 @@ contact_info Raytrace(in float3 Ro, in float3 Rd)
     int NodesToVisit[32];
     int CurrIndex = 0;
     
-#if TIMEOUT_TRIANGLE
-    int TriTestCount = 0;
-#endif
-    
-#if TIMEOUT_TRAVERSAL
-    for (int TraverseIndex = 0; TraverseIndex < TRAVERSE_LIMIT; ++TraverseIndex)
-#else
-        while (true)
-#endif
+    while (true)
     {
-        
-#if TIMEOUT_TRIANGLE
-        if (TriTestCount < 0 || TriTestCount > TRIANGLE_LIMIT)
-        {
-            return Res;
-        }
-#endif
         bvh_entry Node = BVH.Load(CurrIndex);
         
         float BoundT = RayIntersectBound(Ro, Rd, Node.Bound);
-        if (BoundT < Res.T && BoundT != T_MAX)
+        if (BoundT < Hit.T && BoundT != T_MAX)
         {
             if (Node.PrimitiveCount == -1)
             {
@@ -329,10 +307,6 @@ contact_info Raytrace(in float3 Ro, in float3 Rd)
                 int StartOffset = Node.Offset;
                 int EndOffset = (StartOffset + Node.PrimitiveCount);
                 
-#if TIMEOUT_TRIANGLE
-                TriTestCount += Node.PrimitiveCount;
-#endif
-                
                 for (int TriIndex = StartOffset; 
                      TriIndex < EndOffset; 
                      ++TriIndex)
@@ -343,27 +317,25 @@ contact_info Raytrace(in float3 Ro, in float3 Rd)
                                                    Triangle.A,
                                                    Triangle.B,
                                                    Triangle.C);
-                    if (T > T_MIN && T < Res.T)
+                    if (T > T_MIN && T < Hit.T)
                     {
-                        Res.T = T;
-                        Res.Albedo = Triangle.Albedo;
-                        Res.Emission = Triangle.Emission;
-                        Res.N = Triangle.N;
+                        Hit.T = T;
+                        Hit.TriIndex = TriIndex;
                     }
                 }
                 
-                if (ToVisitOffset == 0) break;
+                if (ToVisitOffset <= 0) break;
                 CurrIndex = NodesToVisit[--ToVisitOffset];
             }
         }
         else
         {
-            if (ToVisitOffset == 0) break;
+            if (ToVisitOffset <= 0) break;
             CurrIndex = NodesToVisit[--ToVisitOffset];
         }
     }
     
-    return Res;
+    return Hit;
 }
 
 bool Intersect(in float3 Ro, in float3 Rd)
@@ -382,22 +354,8 @@ bool Intersect(in float3 Ro, in float3 Rd)
     int NodesToVisit[32];
     int CurrIndex = 0;
     
-#if TIMEOUT_TRIANGLE
-    int TriTestCount = 0;
-#endif
-    
-#if TIMEOUT_TRAVERSAL
-    for (int TraverseIndex = 0; TraverseIndex < TRAVERSE_LIMIT; ++TraverseIndex)
-#else
-        while (true)
-#endif
+    while (true)
     {
-#if TIMEOUT_TRIANGLE
-        if (TriTestCount < 0 || TriTestCount > TRIANGLE_LIMIT)
-        {
-            return Res;
-        }
-#endif
         bvh_entry Node = BVH.Load(CurrIndex);
         
         float BoundT = RayIntersectBound(Ro, Rd, Node.Bound);
@@ -421,10 +379,6 @@ bool Intersect(in float3 Ro, in float3 Rd)
                 int StartOffset = Node.Offset;
                 int EndOffset = (StartOffset + Node.PrimitiveCount);
                 
-#if TIMEOUT_TRIANGLE
-                TriTestCount += Node.PrimitiveCount;
-#endif
-                
                 for (int TriIndex = StartOffset; 
                      TriIndex < EndOffset; 
                      ++TriIndex)
@@ -440,13 +394,13 @@ bool Intersect(in float3 Ro, in float3 Rd)
                     }
                 }
                 
-                if (ToVisitOffset == 0) break;
+                if (ToVisitOffset <= 0) break;
                 CurrIndex = NodesToVisit[--ToVisitOffset];
             }
         }
         else
         {
-            if (ToVisitOffset == 0) break;
+            if (ToVisitOffset <= 0) break;
             CurrIndex = NodesToVisit[--ToVisitOffset];
         }
     }
@@ -554,12 +508,12 @@ float4 main(pixel Pixel): SV_TARGET
     float3 CurrRo = Ro;
     float3 CurrRd = Rd;
     
-    contact_info RasterizedFirstHit = ReadGBuffer(Pixel.TexCoord);
+    //contact_info RasterizedFirstHit = ReadGBuffer(Pixel.TexCoord);
     
     for (int BounceIndex = 0; BounceIndex < MaxBounceCount; ++BounceIndex)
     {
-        contact_info Hit = Raytrace(CurrRo, CurrRd);;
-#if 1
+        hit_info Hit = Raytrace(CurrRo, CurrRd);
+#if 0
         if (BounceIndex == 0 && RasterizeFirstBounce)
         {
             Hit = RasterizedFirstHit;
@@ -578,14 +532,29 @@ float4 main(pixel Pixel): SV_TARGET
         }
 #endif
         
-        if (Hit.T > T_MIN && Hit.T < T_MAX)
+        if (Hit.TriIndex != -1 && Hit.T > T_MIN && Hit.T < T_MAX)
         {
-            Radiance += Attenuation*Hit.Emission;
-            Attenuation *= Hit.Albedo;
+            float3 Albedo, N, Emission;
+            if (Hit.TriIndex == PLANE_ID)
+            {
+                Albedo = float3(0.5, 0.5, 0.5);
+                N = float3(0, 1, 0);
+                Emission = float3(0, 0, 0);
+            }
+            else
+            {
+                _triangle HitTriangle = Triangles.Load(Hit.TriIndex);
+                Albedo = HitTriangle.Albedo;
+                N = HitTriangle.N;
+                Emission = HitTriangle.Emission;
+            }
+            
+            Radiance += Attenuation*Emission;
+            Attenuation *= Albedo;
             CurrRo = CurrRo + (Hit.T - T_MIN) * CurrRd;
             
-            Radiance += Attenuation * SampleDirectLight(CurrRo, Hit.N, L);
-            CurrRd = SampleHemisphere(Hit.N);
+            Radiance += Attenuation * SampleDirectLight(CurrRo, N, L);
+            CurrRd = SampleHemisphere(N);
         }
         else
         {

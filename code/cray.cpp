@@ -15,7 +15,6 @@
 
 /*TODO(chen):
 
-. reduce contact_info transfer traffic
 . code review
 . faster BVH traversal (stackless)
 . simple denoise (cross bilateral blur)

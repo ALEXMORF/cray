@@ -44,20 +44,20 @@ Win32Panic(char *Message)
     exit(1);
 }
 
-typedef void set_dpi_awarenss(DPI_AWARENESS_CONTEXT Context);
+typedef BOOL set_dpi_awarenss(DPI_AWARENESS_CONTEXT Context);
 internal void
 Win32SetDPIAwareness()
 {
-    HMODULE SHCoreLibrary = LoadLibraryA("Shcore.lib");
-    if (SHCoreLibrary)
+    HMODULE User32Library = LoadLibraryA("User32.dll");
+    if (User32Library)
     {
-        set_dpi_awarenss *SetDpiAwareness = (set_dpi_awarenss *)GetProcAddress(SHCoreLibrary, "SetProcessDpiAwarenessContext");
+        set_dpi_awarenss *SetDpiAwareness = (set_dpi_awarenss *)GetProcAddress(User32Library, "SetProcessDpiAwarenessContext");
         if (SetDpiAwareness)
         {
             SetDpiAwareness(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
         }
         
-        FreeLibrary(SHCoreLibrary);
+        FreeLibrary(User32Library);
     }
 }
 

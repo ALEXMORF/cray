@@ -44,7 +44,9 @@ cbuffer Settings: register(b0)
 cbuffer Camera: register(b1)
 {
     float3 CamP;
+    float Aperture;
     float3 CamLookAt;
+    float PlaneOfFocus;
 };
 
 cbuffer Context: register(b2)
@@ -500,6 +502,19 @@ float4 main(pixel Pixel): SV_TARGET
     float3 CamY = cross(CamZ, CamX);
     float CamZDist = 1.0 / tan(0.5 * FOV);
     float3 Rd = normalize(AspectRatio * CamX * UV.x + CamY * UV.y + CamZDist * CamZ);
+    
+    // thin lens
+    float FocusT = PlaneOfFocus / normalize(float3(UV.x, UV.y, CamZDist)).z;
+    float3 FocusP = Ro + FocusT * Rd;
+    {
+        float2 R = Rand2();
+        float Radius = sqrt(R.x);
+        float Theta = 2.0 * Pi * R.y;
+        
+        Ro += CamX * Radius * cos(Theta) * Aperture;
+        Ro += CamY * Radius * sin(Theta) * Aperture;
+        Rd = normalize(FocusP - Ro);
+    }
     
     float3 L = normalize(NotNormalizedL);
     float3 Radiance = float3(0, 0, 0);

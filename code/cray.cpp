@@ -15,8 +15,9 @@
 
 /*TODO(chen):
 
-. late-binding dpi awareness for win7 compatible
+. thin-lens camera
 . general code review
+. read: https://slideplayer.com/slide/3396698/
 . faster BVH traversal (while-while and stackless)
 . simple denoise (cross bilateral blur)
 . implement SBVH
@@ -90,6 +91,7 @@ RunCRay(cray *CRay, input *Input, f32 dT, HWND Window,
         CRay->ShowUI = true;
     }
     
+    camera_data OldCamera = CRay->Renderer.Camera;
     render_settings OldSettings = CRay->Renderer.Settings;
     if (CRay->ShowUI)
     {
@@ -102,7 +104,9 @@ RunCRay(cray *CRay, input *Input, f32 dT, HWND Window,
     
     HandleInput(&CRay->Camera, Input, dT);
     if (CRay->Camera.P != CRay->Renderer.Camera.P ||
-        CRay->Camera.LookAt != CRay->Renderer.Camera.LookAt)
+        CRay->Camera.LookAt != CRay->Renderer.Camera.LookAt ||
+        CRay->Renderer.Camera.Aperture != OldCamera.Aperture ||
+        CRay->Renderer.Camera.PlaneOfFocus != OldCamera.PlaneOfFocus)
     {
         RefreshCamera(&CRay->Renderer, &CRay->Camera);
     }

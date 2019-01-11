@@ -61,9 +61,9 @@ struct render_settings
 struct camera_data
 {
     v3 P;
-    u32 Pad1;
+    f32 Aperture;
     v3 LookAt;
-    u32 Pad2;
+    f32 PlaneOfFocus;
 };
 
 struct context_data

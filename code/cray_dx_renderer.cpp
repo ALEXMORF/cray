@@ -401,7 +401,7 @@ InitDXRenderer(HWND Window, camera *Camera, int Width, int Height)
     int ClientWidth = BackBufferDesc.Width;
     int ClientHeight = BackBufferDesc.Height;
     
-    Renderer.Settings.Exposure = 0.5f;
+    Renderer.Settings.Exposure = 0.8f;
     Renderer.Settings.FOV = DegreeToRadian(45.0f);
     Renderer.Settings.RasterizeFirstBounce = false;
     Renderer.Settings.EnableGroundPlane = true;
@@ -412,6 +412,8 @@ InitDXRenderer(HWND Window, camera *Camera, int Width, int Height)
     Renderer.Settings.Azimuth = 2.0f * V3(1.0f, 1.4f, 1.6f);
     Renderer.Camera.P = Camera->P;
     Renderer.Camera.LookAt = Camera->LookAt;
+    Renderer.Camera.Aperture = 0.1f;
+    Renderer.Camera.PlaneOfFocus = 2.0f;
     Renderer.Context.AspectRatio = (f32)ClientWidth / (f32)ClientHeight;
     
     Renderer.SettingsBuffer = CreateDynamicConstantBuffer(Device, &Renderer.Settings, sizeof(Renderer.Settings));

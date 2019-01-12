@@ -28,7 +28,7 @@ Still images after some samples are taken:
 
 Real time interaction:
 
-![Oops, supposed to be a gif of interaction with the dragon model ...](https://i.imgur.com/SOmj3nk.gifv)
+![Oops, supposed to be a gif of interaction with the dragon model ...](https://i.imgur.com/SOmj3nk.gif)
 
 # Requirements:
 Best to run it on Windows 10. It might be able to run on Windows 7 (still working on compatibility).

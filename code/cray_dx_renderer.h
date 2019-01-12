@@ -110,6 +110,7 @@ struct dx_renderer
     ID3D11Texture2D *DepthStencilBuffer;
     ID3D11DepthStencilView *DepthStencilView;
     ID3D11DepthStencilState *DepthStencilState;
+    ID3D11Texture2D *AutoFocusStagingTex; // for capturing camera center focal point
     
     // gpass
     ID3D11VertexShader *GPassVS;
@@ -140,6 +141,7 @@ struct dx_renderer
     render_settings Settings;
     camera_data Camera;
     context_data Context;
+    b32 DoAutoFocus;
     int LastBufferIndex;
     int BufferIndex;
     int Width;

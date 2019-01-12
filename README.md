@@ -27,7 +27,6 @@ Still images after some samples are taken:
 ![dragon](https://user-images.githubusercontent.com/16845654/51070013-1e3a1200-15ef-11e9-8fe4-3637d151bbe1.PNG)
 
 Real time interaction:
-
 https://streamable.com/2z5uj
 
 # Requirements:

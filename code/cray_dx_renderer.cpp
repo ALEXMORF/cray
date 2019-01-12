@@ -163,21 +163,21 @@ CreateWindowSizeCoupledResources(dx_renderer *Renderer)
     {
         Renderer->SamplerBuffers[BufferIndex] = CreateDXRenderTarget(
             Device, ClientWidth, ClientHeight, 
-            DXGI_FORMAT_R16G16B16A16_FLOAT);
+            DXGI_FORMAT_R32G32B32A32_FLOAT);
     }
     Renderer->PositionBuffer = CreateDXRenderTarget(Device, 
                                                     ClientWidth, ClientHeight,
-                                                    DXGI_FORMAT_R16G16B16A16_FLOAT);
+                                                    DXGI_FORMAT_R32G32B32A32_FLOAT);
     Renderer->NormalBuffer = CreateDXRenderTarget(Device, 
                                                   ClientWidth, ClientHeight,
-                                                  DXGI_FORMAT_R16G16B16A16_FLOAT);
+                                                  DXGI_FORMAT_R32G32B32A32_FLOAT);
     //TODO(chen): compress these when we have a material system in place
     Renderer->AlbedoBuffer = CreateDXRenderTarget(Device, 
                                                   ClientWidth, ClientHeight,
                                                   DXGI_FORMAT_B8G8R8A8_UNORM);
     Renderer->EmissionBuffer = CreateDXRenderTarget(Device, 
                                                     ClientWidth, ClientHeight,
-                                                    DXGI_FORMAT_R16G16B16A16_FLOAT);
+                                                    DXGI_FORMAT_R32G32B32A32_FLOAT);
     
     // depth stencil buffer
     {
@@ -401,6 +401,7 @@ InitDXRenderer(HWND Window, camera *Camera, int Width, int Height)
     int ClientWidth = BackBufferDesc.Width;
     int ClientHeight = BackBufferDesc.Height;
     
+    Renderer.DoAutoFocus = true;
     Renderer.Settings.Exposure = 0.8f;
     Renderer.Settings.FOV = DegreeToRadian(45.0f);
     Renderer.Settings.RasterizeFirstBounce = false;
@@ -669,7 +670,7 @@ Render(dx_renderer *Renderer, camera *Camera, f32 T)
         Renderer->OldSettings = Renderer->Settings;
     }
     
-    if (Renderer->Settings.RasterizeFirstBounce)
+    if (Renderer->Settings.RasterizeFirstBounce || Renderer->DoAutoFocus)
     {
         UINT VBStride = sizeof(vertex);
         UINT VBOffset = 0;
@@ -710,6 +711,55 @@ Render(dx_renderer *Renderer, camera *Camera, f32 T)
             Renderer->EmissionBuffer.SRV,
         };
         DeviceContext->PSSetShaderResources(3, ARRAY_COUNT(GBufferViews), GBufferViews);
+    }
+    
+    if (Renderer->DoAutoFocus)
+    {
+        if (!Renderer->AutoFocusStagingTex)
+        {
+            D3D11_TEXTURE2D_DESC TextureDesc = {};
+            TextureDesc.Width = 1;
+            TextureDesc.Height = 1;
+            TextureDesc.MipLevels = 1;
+            TextureDesc.ArraySize = 1;
+            TextureDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+            TextureDesc.SampleDesc.Count = 1;
+            TextureDesc.SampleDesc.Quality = 0;
+            TextureDesc.Usage = D3D11_USAGE_STAGING;
+            TextureDesc.BindFlags = 0;
+            TextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+            TextureDesc.MiscFlags = 0;
+            
+            HRESULT CreatedStagingTex = Renderer->Device->CreateTexture2D(&TextureDesc, 0, 
+                                                                          &Renderer->AutoFocusStagingTex);
+            ASSERT(SUCCEEDED(CreatedStagingTex));
+            ASSERT(Renderer->AutoFocusStagingTex);
+        }
+        
+        int CenterPixelX = Renderer->Width / 2;
+        int CenterPixelY = Renderer->Height / 2;
+        D3D11_BOX CopyBox = {};
+        CopyBox.left = CenterPixelX;
+        CopyBox.top = CenterPixelY;
+        CopyBox.front = 0;
+        CopyBox.right = CopyBox.left+1;
+        CopyBox.bottom = CopyBox.top+1;
+        CopyBox.back = CopyBox.front+1;
+        DeviceContext->CopySubresourceRegion(Renderer->AutoFocusStagingTex, 0, 
+                                             0, 0, 0, Renderer->PositionBuffer.Tex, 
+                                             0, &CopyBox);
+        
+        D3D11_MAPPED_SUBRESOURCE MappedData = {};
+        DeviceContext->Map(Renderer->AutoFocusStagingTex, 0, D3D11_MAP_READ, 0, &MappedData);
+        v4 CenterRayHitP = *(v4 *)MappedData.pData;
+        DeviceContext->Unmap(Renderer->AutoFocusStagingTex, 0);
+        
+        f32 CenterRayDepth = Len(Camera->P - V3(CenterRayHitP));
+        if (Abs(Renderer->Camera.FocalDistance - CenterRayDepth) > 0.01f)
+        {
+            Renderer->Camera.FocalDistance = Lerp(CenterRayDepth, Renderer->Camera.FocalDistance, 0.2f);
+            RefreshCamera(Renderer, Camera);
+        }
     }
     
     int BufferIndex = Renderer->BufferIndex;

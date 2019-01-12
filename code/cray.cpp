@@ -15,13 +15,12 @@
 
 /*TODO(chen):
 
-. general code review
 . read: https://slideplayer.com/slide/3396698/
 . faster BVH traversal (while-while and stackless)
 . simple denoise (cross bilateral blur)
 . implement SBVH
 . faster ray vs triangle tests (woop test)
-. use a high quality sampling sequence
+. use halton sampling
 . solve the "string too long" problem, can't bake shader into exe
 -    currently leaking memory to read shader code, fix that
 . import more test models: http://graphics.stanford.edu/data/3Dscanrep/

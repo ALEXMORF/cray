@@ -63,7 +63,7 @@ struct camera_data
     v3 P;
     f32 Aperture;
     v3 LookAt;
-    f32 PlaneOfFocus;
+    f32 FocalDistance;
 };
 
 struct context_data

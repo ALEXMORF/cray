@@ -412,8 +412,8 @@ InitDXRenderer(HWND Window, camera *Camera, int Width, int Height)
     Renderer.Settings.Azimuth = 2.0f * V3(1.0f, 1.4f, 1.6f);
     Renderer.Camera.P = Camera->P;
     Renderer.Camera.LookAt = Camera->LookAt;
-    Renderer.Camera.Aperture = 0.1f;
-    Renderer.Camera.PlaneOfFocus = 2.0f;
+    Renderer.Camera.Aperture = 0.02f;
+    Renderer.Camera.FocalDistance = 2.0f;
     Renderer.Context.AspectRatio = (f32)ClientWidth / (f32)ClientHeight;
     
     Renderer.SettingsBuffer = CreateDynamicConstantBuffer(Device, &Renderer.Settings, sizeof(Renderer.Settings));

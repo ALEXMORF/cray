@@ -7,16 +7,17 @@ the ease of viewing them. Of course this will change as I will allow
 user-inputed models to be rendered. 
 
 Bugs are probably inevitable, as it is just the nature of this kind of things.
-In anticipation of different shader compilers from different GPU vendors,
 I tried my best to give meaningful error messages to all possible failure 
 points in the program. If any error occured, please report them on CRay's
 forum as this will help me pick out bugs and make the program more robust.
 Thank you very much!
 
+website: https://cray.handmade.network/
+
 Requirements:
-Best to run it on Windows 10. It might be able to run on Windows 7.
-Supports OpenGL 4.4.
-2 GB of RAM minimum (this is pretty unreasonably big, will be compressed in future demos).
+Best to run it on Windows 10. It might be able to run on Windows 7 (still working on compatibility).
+Supports DirectX 11. 
+Recommend at least 1 GB if you want to load huge models. 
 
 Controls:
 WASD to move honrizontally

@@ -15,7 +15,6 @@
 
 /*TODO(chen):
 
-. thin-lens camera
 . general code review
 . read: https://slideplayer.com/slide/3396698/
 . faster BVH traversal (while-while and stackless)
@@ -106,7 +105,7 @@ RunCRay(cray *CRay, input *Input, f32 dT, HWND Window,
     if (CRay->Camera.P != CRay->Renderer.Camera.P ||
         CRay->Camera.LookAt != CRay->Renderer.Camera.LookAt ||
         CRay->Renderer.Camera.Aperture != OldCamera.Aperture ||
-        CRay->Renderer.Camera.PlaneOfFocus != OldCamera.PlaneOfFocus)
+        CRay->Renderer.Camera.FocalDistance != OldCamera.FocalDistance)
     {
         RefreshCamera(&CRay->Renderer, &CRay->Camera);
     }

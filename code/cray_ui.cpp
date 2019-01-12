@@ -170,7 +170,7 @@ DoUI(cray *CRay, int Width, int Height, f32 dT)
     {
         camera_data *Camera = &CRay->Renderer.Camera;
         ImGui::DragFloat("Aperture", (f32 *)&Camera->Aperture, 0.001f, 0.0f, 1.0f);
-        ImGui::DragFloat("PlaneOfFocus", (f32 *)&Camera->PlaneOfFocus, 0.01f, 0.0f, 1000000.0f);
+        ImGui::DragFloat("Focal Distance", (f32 *)&Camera->FocalDistance, 0.01f, 0.0f, 1000000.0f);
     }
     
     if (ImGui::Button("Load Model"))

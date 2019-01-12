@@ -757,7 +757,7 @@ Render(dx_renderer *Renderer, camera *Camera, f32 T)
         f32 CenterRayDepth = Len(Camera->P - V3(CenterRayHitP));
         if (Abs(Renderer->Camera.FocalDistance - CenterRayDepth) > 0.01f)
         {
-            Renderer->Camera.FocalDistance = Lerp(CenterRayDepth, Renderer->Camera.FocalDistance, 0.2f);
+            Renderer->Camera.FocalDistance = CenterRayDepth;
             RefreshCamera(Renderer, Camera);
         }
     }

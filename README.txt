@@ -15,9 +15,9 @@ Thank you very much!
 website: https://cray.handmade.network/
 
 Requirements:
-Best to run it on Windows 10. It might be able to run on Windows 7 (still working on compatibility).
+OS: Windows 7/10
 Supports DirectX 11. 
-Recommend at least 1 GB if you want to load huge models. 
+Recommend at least 800MB if you want to load really complex models (buddah or dragon, for example).
 
 Controls:
 WASD to move honrizontally

@@ -53,6 +53,12 @@ CalcSecondsPassed(clock_t BeginClock)
 
 #define ARRAY_COUNT(Array) (sizeof(Array)/sizeof((Array)[0]))
 
+inline u32 
+BITS(int Count) {
+    ASSERT(Count <= 31);
+    return (1ul << Count) - 1;
+}
+
 typedef void panic(char *Message);
 global_variable panic *__PanicStr;
 

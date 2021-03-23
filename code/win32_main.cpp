@@ -198,7 +198,7 @@ WinMain(HINSTANCE CurrentInstance,
                 GlobalWindowWidth, GlobalWindowHeight, 
                 Win32Panic);
         
-        Sleep(2);
+        //Sleep(2);
         
         f32 EstimatedFPS = 1.0f / dT;
         char TitleBuf[255];

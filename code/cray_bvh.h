@@ -21,6 +21,7 @@ struct primitive
     int TriIndex;
     bound Bound;
     v3 Centroid;
+    u32 Code;
 };
 
 struct bucket
@@ -51,4 +52,12 @@ struct bvh_entry
     };
     i32 PrimitiveCount;
     i32 Axis;
+};
+
+// HLBVH
+
+struct bvh_treelet {
+    int FirstPrimIndex;
+    int Count;
+    bvh_node *Root;
 };

@@ -74,6 +74,18 @@ struct quaternion
 //
 // Misc
 
+inline u32
+Min(u32 A, u32 B)
+{
+    return A < B? A: B;
+}
+
+inline u32
+Max(u32 A, u32 B)
+{
+    return A > B? A: B;
+}
+
 inline f32
 Min(f32 A, f32 B)
 {
